@@ -1,0 +1,5 @@
+` This is the file that will open when you run Aurum with isDebug on.
+` The other files are example programs coded in Aurum.
+function main() -> void {
+    print("Hello World!");
+}

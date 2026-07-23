@@ -1,0 +1,14 @@
+` This is Euclid's algorithm. It finds the greatest common divisor between two numbers.
+function euclid(int aa, int bb) -> int {
+    long a = aa;
+    long b = bb;
+    if (b > a) {
+        a = bb;
+        b = aa;
+    }
+    if (a == 0 || b == 0) {
+        if (a == 0) {return b;}
+        return a;
+    }
+    return euclid(a - b, b);
+}
