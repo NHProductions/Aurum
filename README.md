@@ -5,4 +5,4 @@ In addition, Aurum is a lightweight (only 900-some kilobytes) language.
 
 To be clear, Aurum is still an extremely WIP language, and it will get better as time goes on.
 
-If you want more information as to the syntax and interpretation of Aurum, the Aurum Standard provides exactly that.
+If you want more information as to the installation, syntax, and interpretation of Aurum, the Aurum Standard provides exactly that.
