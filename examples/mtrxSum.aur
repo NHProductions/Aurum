@@ -1,0 +1,21 @@
+` This is a test file for matrix summation. It's used for benchmarking.
+import @time;
+import @math;
+import @lalg;
+function main() -> void {
+    print("\n");
+    int dims = 100;
+    long t = time();
+    double128[] arr = doubleMtrxFromDims(dims,dims);
+    double128[] arr2 = doubleMtrxFromDims(dims,dims);
+    double128 sum = 0ld;
+    print("Starting addition!");
+    for (int i = 0; i < dims; i++) {
+        `long tt = time();
+        for (int j = 0; j < dims; j++) {
+            sum += arr[i][j] + arr2[i][j];
+        }
+        `print("%l\n", time()-tt);
+    }
+    print("%l", time()-t);
+}

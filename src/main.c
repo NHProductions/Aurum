@@ -29,6 +29,8 @@ num.c - Contains some functions for dealing with numbers (If you're interested i
 
 void getDirectory(char* path);
 int main(int argc, char **argv) {
+    
+    globalPool = createPool(1000*1000*sizeof(typedValue));
     // Ensure that char, short, int, int64_t, float, double, & long double are all correct sizes.
     if (sizeof(char) != 1) fatalError(0x8, "Invalid size of char (expected 1). Check the environment in which you are building.", -1); 
     if (sizeof(short) != 2) fatalError(0x8, "Invalid size of short (expected 2). Check the environment in which you are building.", -1); 

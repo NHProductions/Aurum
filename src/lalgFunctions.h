@@ -54,7 +54,9 @@ struct vector2 {\n\
     }\n\
     function op_add(vector2 n) -> vector2 {return vector2(this.x+n.x, this.y+n.y);}\n\
     function op_sub(vector2 n) -> vector2 {return vector2(this.x-n.x, this.y-n.y);}\n\
+    function op_neg() -> vector2 {return vector2(-this.x, -this.y);}\n\
     function scalarMult(double128 n) -> vector2 {return vector2(this.x*n, this.y*n);}\n\
+    function op_len() -> double128 {return this.magnitude();}\n\
 }\n\
 struct vector3 {\n\
     double128 x;\n\
@@ -142,7 +144,9 @@ struct vector3 {\n\
     }\n\
     function op_add(vector3 n) -> vector3 {return vector3(this.x+n.x, this.y+n.y, this.z+n.z);}\n\
     function op_sub(vector3 n) -> vector3 {return vector3(this.x-n.x, this.y-n.y, this.z-n.z);}\n\
+    function op_neg() -> vector3 {return vector3(-this.x, -this.y, -this.z);}\n\
     function scalarMult(double128 n) -> vector3 {return vector3(this.x*n, this.y*n, this.z*n);}\n\
+    function op_len() -> double128 {return this.magnitude();}\n\
 }\n\
 struct vectorN {\n\
     double128[] values;\n\
@@ -221,13 +225,15 @@ struct vectorN {\n\
         }\n\
         return vectorN(toReturn);\n\
     }\n\
-    function scalarMult(vectorN n) -> vectorN {\n\
+    function scalarMult(double128 n) -> vectorN {\n\
         double128[] toReturn = [];\n\
         for (int i = 0; i < #this.values; i++) {\n\
             toReturn.append(this.values[i]*n)\n\
         }\n\
         return vectorN(toReturn);\n\
     }\n\
+    function op_neg() -> vectorN {return this.scalarMult(-1ld);}\n\
+    function op_len() -> double128 {return this.magnitude();}\n\
 }\n\
 function detMatrix(double128[] matrix, int size) -> double128 {\n\
     if (size == 1) {\n\
@@ -364,6 +370,12 @@ struct mtrx {\n\
             }\n\
         }\n\
         return mtrx(toReturn, this.rows, this.cols);\n\
+    }\n\
+    function op_mul(auto n) -> mtrx {\n\
+        if (typeof(n) == \"mtrx\") {\n\
+            return this.mult(n);\n\
+        }\n\
+        elif {return this.scalarMult(n);}\n\
     }\n\
 }\n\
 function identityMtrx(int n) -> mtrx {\n\

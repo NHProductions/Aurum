@@ -1,0 +1,4 @@
+` Hello world program in Aurum.
+function main() -> void {
+    print("Hello World!");
+}

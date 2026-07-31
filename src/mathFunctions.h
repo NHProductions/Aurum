@@ -3,7 +3,7 @@
 #include "bytecoder.h"
 #include "vm.h"
 #include "sysFunctions.h"
-void mBases(virtualMachineState* vms, char* identifier, List* args);
+void mBases(auFunc);
 void mLog(auFunc);
 void mHypot(auFunc);
 void mTrig(auFunc);

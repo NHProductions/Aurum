@@ -1,8 +1,9 @@
 #ifndef VM_H
 #define VM_H
 #include "bytecoder.h"
-
-
+#include "array.h"
+#include "pool.h"
+extern pool* globalPool;
 void freeTypedValue(typedValue* tv);
 void freeTVArray(arrayValue av);
 typedef struct {
@@ -20,8 +21,8 @@ typedef struct {
 void executeBytecode(byteCode* bc);
 typedValue* deepcopyTypedValue(typedValue* tv);
 typedef struct {
-    List* stack; // List of typed values (e.x anonymous arrays/numbers/structs ONLY)
-    List* globals;
+    array* stack; // List of typed values (e.x anonymous arrays/numbers/structs ONLY)
+    array* globals;
     byteCode* bc;
 } virtualMachineState;
 #endif

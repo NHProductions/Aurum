@@ -17,18 +17,20 @@ Files to check next: sysFunctions.c
 #include "bytecoder.h"
 #include "sysFunctions.h"
 #include "winInclude.h"
+#include "pool.h"
 /*
 Copies a typedValue by continuously recursing.
 */
 void freeTypedValue(typedValue* tv);
+pool* globalPool = NULL;
 typedValue* deepcopyTypedValue(typedValue* tv) {
-    typedValue* toReturn = malloc(sizeof(typedValue));
+    typedValue* toReturn = poolAlloc(globalPool);
+    if (toReturn == NULL) {printf("Memory allocation error"); exit(1);}
     *toReturn = (typedValue){
-        .valueType = tv->valueType,
         .ptr = NULL,
+        .valueType = tv->valueType,
         .value.numberValue = (num){.type = NUM_BOOL, .value.bVal = false}
     };
-    
     if (tv->ptr != NULL) {
         toReturn->ptr = malloc(sizeof(stackPtr));
         *(stackPtr*)toReturn->ptr = (stackPtr){
@@ -38,6 +40,7 @@ typedValue* deepcopyTypedValue(typedValue* tv) {
         };
     }
     else toReturn->ptr = NULL;
+
     switch (tv->valueType) {
         case TYPE_NUM: {
             toReturn->value.numberValue = (num){
@@ -75,9 +78,8 @@ typedValue* deepcopyTypedValue(typedValue* tv) {
             break;
         }
     }
-
-    return toReturn;
 }
+
 void printStack(virtualMachineState* vms);
 // Does binary/unary operation using num.c.
 void doVMSOp(virtualMachineState* vms, char* op, bool isBinary) {
@@ -92,9 +94,9 @@ void doVMSOp(virtualMachineState* vms, char* op, bool isBinary) {
     int BType = TYPE_NULL;
     typedValue* B = NULL;
     typedValue* A = NULL;
-    B = (typedValue*)popStack(vms->stack);
+    B = (typedValue*)popArray(vms->stack);
     BType = B->valueType;
-    if (isBinary) { A = (typedValue*)popStack(vms->stack); AType = A->valueType;}
+    if (isBinary) { A = (typedValue*)popArray(vms->stack); AType = A->valueType;}
 
 
     // If all inputs are numbers, do the operation & push it into the stack.
@@ -112,7 +114,7 @@ void doVMSOp(virtualMachineState* vms, char* op, bool isBinary) {
         toAdd->value.numberValue = isBinary ? doBinaryOperation(op, A->value.numberValue, B->value.numberValue) : doUnaryOperation(op, B->value.numberValue);
         if (A != NULL) freeTypedValue(A);
         freeTypedValue(B); // todo: implement custom freeTypedValue() function.
-        List_InsertElement(vms->stack, 0, toAdd);
+        pushArray(vms->stack, toAdd);
     }
     // String equality
     else if (strcmp(op, "==") == 0 && AType == TYPE_ARRAY && BType == TYPE_ARRAY) {
@@ -120,7 +122,7 @@ void doVMSOp(virtualMachineState* vms, char* op, bool isBinary) {
             char* Astr = strArrToChar(A);
             char* Bstr = strArrToChar(B);
             bool equals = strcmp(Astr, Bstr) == 0 ? true : false;
-            List_InsertElement(vms->stack, 0, numToTV((num){.type = NUM_BOOL, .value.bVal = equals}));
+            pushArray(vms->stack, numToTV((num){.type = NUM_BOOL, .value.bVal = equals}));
             free(Astr);
             free(Bstr);
             freeTypedValue(A);
@@ -140,7 +142,7 @@ void doVMSOp(virtualMachineState* vms, char* op, bool isBinary) {
                 appendTypedValue(toApp, numToTV((num){.type = NUM_CHAR, .value.cVal = toAppend[i]}));
             }
             appendTypedValue(toApp, numToTV((num){.type = NUM_CHAR, .value.cVal = 0}));
-            List_InsertElement(vms->stack, 0, toApp);
+            pushArray(vms->stack, toApp);
             free(toAppend);
             free(Astr);
             free(Bstr);
@@ -152,19 +154,19 @@ void doVMSOp(virtualMachineState* vms, char* op, bool isBinary) {
 // Executes lines.
 void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals, bool* returnLn) {
 
-    chunk* currentChunk = (chunk*)List_GetElement(vms->bc->chunks, chunkIdx)->data;
-    instruction* currentInstruction = (instruction*)List_GetElement(currentChunk->instructions, *line)->data;
+    chunk* currentChunk = (chunk*)getArray(vms->bc->chunks, chunkIdx);
+    instruction* currentInstruction = (instruction*)getArray(currentChunk->instructions, *line);
     //printStack(vms);
     switch (currentInstruction->code) {
         // Pushes constants[args[0]] into the stack.
         case OP_LOAD_CONST: {
-            typedValue* tocpy = List_GetElement(vms->bc->constants, currentInstruction->args[0])->data;
+            typedValue* tocpy = getArray(vms->bc->constants, currentInstruction->args[0]);
             typedValue* tva = deepcopyTypedValue(tocpy);
             if (tva->valueType == TYPE_NULL) {
                 if (isDebug) printf("Null"); 
                 fatalError(0x30, "", -1);
             }
-            List_InsertElement(vms->stack, 0, tva);
+            pushArray(vms->stack, tva);
             break;
         }
         // All of the arithmetic operations just call doVMSOp(), which pops the values from the stack & does the operation.
@@ -191,7 +193,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
         case OP_NEG: {doVMSOp(vms, "-", false);break;}
         // Loads globals[args[0]] onto the stack.
         case OP_LOAD_GLOBAL: {
-            stackVariable* sv = (stackVariable*)List_GetElement(vms->globals, currentInstruction->args[0])->data;
+            stackVariable* sv = (stackVariable*)getArray(vms->globals, currentInstruction->args[0]);
             typedValue* A = deepcopyTypedValue(sv->value);
             A->ptr = malloc(sizeof(stackPtr));
             *((stackPtr*)A->ptr) = (stackPtr){
@@ -199,14 +201,15 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
                 .isTV = false,
                 .idx = -1,
             };
-            List_InsertElement(vms->stack, 0, A);
+            pushArray(vms->stack, A);
             break;
         }
         // Pops a value from the stack and stores it into globals[args[0]].
         case OP_STORE_GLOBAL: {
             // [2] [var:Undefined] -> [] [var:2]
-            typedValue* A = ((typedValue*)popStack(vms->stack));
-            stackVariable* toSet = (stackVariable*)List_GetElement(vms->globals, currentInstruction->args[0])->data;
+            typedValue* A = ((typedValue*)popArray(vms->stack));
+            stackVariable* toSet = (stackVariable*)getArray(vms->globals, currentInstruction->args[0]);
+            freeTypedValue(toSet->value);
             toSet->value = deepcopyTypedValue(A);
             freeTypedValue(A);
         
@@ -214,7 +217,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
         }
         // Pops a value from the stack and stores it into locals[args[0]].
         case OP_STORE_LOCAL: {
-            typedValue* A = ((typedValue*)popStack(vms->stack));
+            typedValue* A = ((typedValue*)popArray(vms->stack));
             stackVariable* toSet = NULL;
             // If it already exists, then set the value of toSet to the variable that needs set. If not, add it to locals.:
             if (currentInstruction->args[0] < locals->length) toSet = (stackVariable*)List_GetElement(locals, currentInstruction->args[0])->data;
@@ -235,12 +238,16 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
                     .isArray = A->valueType == TYPE_ARRAY,
                     .structType = "",
                     .t = A->valueType,
+                    .value = NULL,
                 };
                 toSet->structType = A->valueType == TYPE_STRUCT ? A->value.so.def->name : strdup("");
                 free(List_GetElement(locals, currentInstruction->args[0])->data);
                 List_GetElement(locals, currentInstruction->args[0])->data = NULL;
                 List_GetElement(locals, currentInstruction->args[0])->data = toSet;
                 
+            }
+            if (toSet->value != NULL) {
+                freeTypedValue(toSet->value);
             }
             toSet->value = deepcopyTypedValue(A);
             freeTypedValue(A);
@@ -256,7 +263,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
                 .isTV = false,
                 .idx = -1
             };
-            List_InsertElement(vms->stack, 0, A);
+            pushArray(vms->stack, A);
             break;
         }
         // Jumps to line args[0].
@@ -266,7 +273,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
         }
         // Pops a value from the stack. If it's zero, jump to line args[0].
         case OP_JUMP_IF_FALSE: {
-            typedValue* A = (typedValue*)popStack(vms->stack);
+            typedValue* A = (typedValue*)popArray(vms->stack);
             if (A->valueType == TYPE_NUM) {
                 long double ld = convertNum(A->value.numberValue, NUM_LONGDOUBLE).value.ldVal;
                 if (ld == 0) {
@@ -287,7 +294,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
         If it's not, then iterate through the chunk index given, executing the lines.
         */
         case OP_CALL: {
-            bcFunction* bcf = (bcFunction*)List_GetElement(vms->bc->functionIdentifiers, currentInstruction->args[0])->data;
+            bcFunction* bcf = (bcFunction*)getArray(vms->bc->functionIdentifiers, currentInstruction->args[0]);
             if (bcf->isSystem) {
                 systemCall(bcf, vms, currentInstruction->args[1]);
             }
@@ -296,7 +303,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
                 *toSend = NewList();
                 for (int i = 0; i < currentInstruction->args[1]; i++) {
                     stackVariable* sv = malloc(sizeof(stackVariable));
-                    typedValue* tv = popStack(vms->stack);
+                    typedValue* tv = popArray(vms->stack);
                     *sv = (stackVariable){
                         .isArray = tv->valueType == TYPE_ARRAY,
                         .name = strdup(""),
@@ -309,7 +316,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
                 chunk* toCall = NULL;
                 int cidx;
                 for (int i = 0; i < vms->bc->chunks->length; i++) {
-                    chunk* c = List_GetElement(vms->bc->chunks, i)->data;
+                    chunk* c = getArray(vms->bc->chunks, i);
                     if (strcmp(c->name, bcf->name) == 0) {
                         toCall = c;
                         cidx = i;
@@ -346,19 +353,19 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
                 }
             };
             for (int i = amt; i > 0; i-- ) {
-                typedValue* ta = popStack(vms->stack);
+                typedValue* ta = popArray(vms->stack);
                 if (ta->valueType == TYPE_NUM) {
                     toAppend->value.av.arrayType = AT_NUM;
                 }
                 toAppend->value.av.data[i-1] = ta;
             }
-            List_InsertElement(vms->stack, 0, toAppend);
+            pushArray(vms->stack, toAppend);
             break;
         }
         // # operator; returns the length of an array (or string)
         case OP_ARRAY_LEN: {
             typedValue* tv = malloc(sizeof(typedValue));
-            typedValue* arr = popStack(vms->stack);
+            typedValue* arr = popArray(vms->stack);
             
             *tv = (typedValue){
                 .valueType = TYPE_NUM,
@@ -368,14 +375,14 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
                 }
             };
             freeTypedValue(arr);
-            List_InsertElement(vms->stack, 0, tv);
+            pushArray(vms->stack, tv);
             break;
         }
         // Pops two values from the stack. The 1st value popped is the index, and 2nd value is the array.
         // Load arr[idx] onto the stack. Free idx & arr.
         case OP_LOAD_IDX: {
-            typedValue* idx = popStack(vms->stack);
-            typedValue* arr = popStack(vms->stack);
+            typedValue* idx = popArray(vms->stack);
+            typedValue* arr = popArray(vms->stack);
             if (idx->valueType != TYPE_NUM || arr->valueType != TYPE_ARRAY) {fatalError(0x22, "Invalid Array access", -1);}
             uint64_t cc = convertNum(idx->value.numberValue, NUM_ULONG).value.ulVal;
             if (cc >= arr->value.av.len) fatalError(0x22, "Invalid array access", -1);
@@ -403,7 +410,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
                     .idx = cc
                 };
             }
-            List_InsertElement(vms->stack, 0, toApp);
+            pushArray(vms->stack, toApp);
             freeTypedValue(idx);
             freeTypedValue(arr);
             break;
@@ -411,9 +418,9 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
         // Pops three values from the stack. The 1st is the value to store, 2nd is the index, 3rd is the array.
         // Stores toStore into array[idx]
         case OP_STORE_IDX: {
-            typedValue* toStore = popStack(vms->stack);
-            typedValue* idx = popStack(vms->stack);
-            typedValue* array = popStack(vms->stack);
+            typedValue* toStore = popArray(vms->stack);
+            typedValue* idx = popArray(vms->stack);
+            typedValue* array = popArray(vms->stack);
             
             if (idx->valueType != TYPE_NUM) {fatalError(0x2F, "Invalid index assignment", -1);}
             if (array->ptr == NULL) {if (isDebug) {printf("ARRAY NULL");} break;};
@@ -437,7 +444,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
         }
         // Allocates a new struct
         case OP_NEW_STRUCT: {
-            structDefinition* sd = List_GetElement(vms->bc->structDefs, currentInstruction->args[0])->data;
+            structDefinition* sd = getArray(vms->bc->structDefs, currentInstruction->args[0]);
             typedValue* toSet = malloc(sizeof(typedValue));
             *toSet = (typedValue){
                 .ptr = NULL,
@@ -456,14 +463,14 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
                 };
                 (toSet->value.so.fields)[i] = f;
             }
-            List_InsertElement(vms->stack, 0, toSet);
+            pushArray(vms->stack, toSet);
             break;
         }
         // Pops two values from the stack. The 1st is the value to store, and the 2nd is the struct to store it in.
         // sets struct.args[0] to val.
         case OP_SET_FIELD: {
-            typedValue* val = popStack(vms->stack);
-            typedValue* structSet = popStack(vms->stack);
+            typedValue* val = popArray(vms->stack);
+            typedValue* structSet = popArray(vms->stack);
 
             if (structSet->ptr == NULL) {
                 //free(((typedValue**)structSet->value.so.fields)[currentInstruction->args[0]]);
@@ -493,7 +500,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
         }
         // Pops one value from the stack, and pushes tv.args[0].
         case OP_GET_FIELD: {
-            typedValue* tv = popStack(vms->stack);
+            typedValue* tv = popArray(vms->stack);
             typedValue* toReturn = deepcopyTypedValue(((typedValue**)tv->value.so.fields)[currentInstruction->args[0]]);
             toReturn->ptr = malloc(sizeof(stackPtr));
             if (tv->ptr == NULL) {
@@ -517,7 +524,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
                 };
             }
             
-            List_InsertElement(vms->stack, 0, toReturn);
+            pushArray(vms->stack, toReturn);
             freeTypedValue(tv);
             break;
         }
@@ -528,7 +535,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, List* locals
 void printStack(virtualMachineState* vms) {
     printf("\n[");
     for (int i = 0; i < vms->stack->length; i++) {
-        typedValue* tv = (typedValue*)List_GetElement(vms->stack, i)->data;
+        typedValue* tv = (typedValue*)getArray(vms->stack, i);
         if (tv->valueType == TYPE_NUM) {
             if (tv->value.numberValue.type == NUM_CHAR) {
                 printf("%d(%c)", tv->value.numberValue.value.cVal, tv->value.numberValue.value.cVal);
@@ -574,7 +581,7 @@ void printStack(virtualMachineState* vms) {
 // Finds a function's chunkidx.
 int findFuncChunkIdx(byteCode* bc, char* name) {
     for (int i = 0; i < bc->chunks->length; i++) {
-        chunk* c = (chunk*)List_GetElement(bc->chunks, i)->data;
+        chunk* c = (chunk*)getArray(bc->chunks, i);
         if (strcmp(c->name, name) == 0) {
             return i;
         }
@@ -584,27 +591,26 @@ int findFuncChunkIdx(byteCode* bc, char* name) {
 }
 void freeTVArray(arrayValue av);
 void freeTypedValue(typedValue* tv) {
-    if (tv->valueType == TYPE_NUM) {
-        free(tv);
-    }
-    else if (tv->valueType == TYPE_ARRAY) {
+    
+    if (tv == NULL) return;
+
+    if (tv->valueType == TYPE_ARRAY) {
         for (int i = 0; i < tv->value.av.len; i++) {
-            typedValue* idx = tv->value.av.data[i];
-            freeTypedValue(idx);
+            freeTypedValue(tv->value.av.data[i]);
         }
         free(tv->value.av.data);
-        tv->value.av.len = 0;
     }
     else if (tv->valueType == TYPE_STRUCT) {
         for (int i = 0; i < tv->value.so.def->fields->length; i++) {
-            typedValue* field = tv->value.so.fields[i];
-            freeTypedValue(field);
+            freeTypedValue(tv->value.so.fields[i]);
         }
+        free(tv->value.so.fields); 
     }
+    poolFree(globalPool, tv);
 }
 void freeTVArray(arrayValue av) {
     for (int i = 0; i < av.len; i++) {
-        free(av.data[i]);
+        freeTypedValue(av.data[i]);
     }
     free(av.data);
 }
@@ -614,15 +620,14 @@ void executeBytecode(byteCode* bc) {
     // Initializes the virtualMachineState.
     virtualMachineState* vms = malloc(sizeof(virtualMachineState));
     *vms = (virtualMachineState){
-        .globals = malloc(sizeof(List)),
-        .stack = malloc(sizeof(List)),
+        .globals = mallocArray(0),
+        .stack = mallocArray(0),
         .bc = bc
     };
-    *vms->globals = NewList();
-    *vms->stack = NewList();
     // adds bc.globals to vms.globals.
     for (int i = 0; i < vms->bc->globals->length; i++) {
-        vmVariable* toCpy = (vmVariable*)List_GetElement(vms->bc->globals, i)->data;
+        
+        vmVariable* toCpy = (vmVariable*)getArray(vms->bc->globals, i);
         stackVariable* sv = malloc(sizeof(stackVariable));
         *sv = (stackVariable){
             .isArray = toCpy->isArray,
@@ -632,11 +637,11 @@ void executeBytecode(byteCode* bc) {
             .value = malloc(sizeof(typedValue))
         };
         *sv->value = (typedValue){.valueType = TYPE_NUM, .value.numberValue.value.bVal = 0, .ptr = NULL};
-        List_AppendElement(vms->globals, sv);
+        appendArray(vms->globals, sv);
     }
     // Executes premain
     int premainIdx = findFuncChunkIdx(bc, "premain");
-    chunk* premainChunk = (chunk*)List_GetElement(bc->chunks, premainIdx)->data;
+    chunk* premainChunk = (chunk*)getArray(bc->chunks, premainIdx);
     List* locals = malloc(sizeof(List));
     *locals = NewList();
     bool ptr = false;
@@ -645,7 +650,7 @@ void executeBytecode(byteCode* bc) {
     } 
     // executes main
     int mainIdx = findFuncChunkIdx(bc, "main");
-    chunk* mainChunk = (chunk*)List_GetElement(bc->chunks, mainIdx)->data;
+    chunk* mainChunk = (chunk*)getArray(bc->chunks, mainIdx);
     for (int i = 0; i < mainChunk->instructions->length; i++) {
         int prevIVal = i;
         executeLine(vms, mainIdx, &i, locals, &ptr);
@@ -654,4 +659,5 @@ void executeBytecode(byteCode* bc) {
         
     } 
     if (isDebug) printStack(vms);
+    if (isDebug) {printf("\n%d/%d", globalPool->currentTotal, globalPool->capacity/sizeof(typedValue));}
 }

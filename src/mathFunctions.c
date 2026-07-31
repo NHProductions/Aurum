@@ -1,7 +1,7 @@
 
+#define _USE_MATH_DEFINES
 #include <math.h>
 #include <float.h>
-
 #include "sysFunctions.h"
 #include "mathFunctions.h"
 #include "bytecoder.h"
@@ -139,12 +139,12 @@ long double baseToDec(char* n, int base, char* charsetA) {
 }
 // C implementation for baseToDec(), binToDec(), octToDec(), dozToDec(), hexToDec(), b64ToDec(), decToBase(), decToBin(), decToOct(), decToDoz(), decToHex(), and decToB64()
 void mBases(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (strcmp(identifier, "baseToDec") == 0 || strcmp(identifier, "binToDec") == 0 || strcmp(identifier, "octToDec") == 0 || strcmp(identifier, "dozToDec") == 0 || strcmp(identifier, "hexToDec") == 0 || strcmp(identifier, "b64ToDec") == 0 ) {
         typedValue* arg1 = NULL;
-        if (args->length >= 2) {arg1 = List_GetElement(args, 1)->data; if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);}
+        if (args->length >= 2) {arg1 = getArray(args,  1); if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);}
         typedValue* arg2 = NULL;
-        if (args->length >= 3) arg2 = List_GetElement(args, 2)->data;
+        if (args->length >= 3) arg2 = getArray(args,  2);
         if (arg2 != NULL) {if (arg2->valueType != TYPE_ARRAY) fatalError(0x30, "", -1);}
         
         if (arg0->valueType != TYPE_ARRAY) fatalError(0x30, "", -1);
@@ -164,7 +164,7 @@ void mBases(auFunc) {
         long double res = baseToDec(toConvert, base, charset);
 
         typedValue* toReturn = numToTV(convertNum((num){.type = NUM_LONGDOUBLE, .value.ldVal = res}, arg1 == NULL ? NUM_LONGDOUBLE : arg1->value.numberValue.type));
-        List_InsertElement(vms->stack, 0, toReturn);
+        pushArray(vms->stack,toReturn);
 
         if (arg2 != NULL) free(charset);
         free(toConvert);
@@ -173,9 +173,9 @@ void mBases(auFunc) {
     }
     else if (strcmp(identifier, "decToBase") == 0 || strcmp(identifier, "decToBin") == 0 || strcmp(identifier, "decToOct") == 0 || strcmp(identifier, "decToDoz") == 0 || strcmp(identifier, "decToHex") == 0 || strcmp(identifier, "decToB64") == 0 ) {
         typedValue* arg1 = NULL;
-        if (args->length >= 2) {arg1 = List_GetElement(args, 1)->data; if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);}
+        if (args->length >= 2) {arg1 = getArray(args,  1); if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);}
         typedValue* arg2 = NULL;
-        if (args->length >= 3) arg2 = List_GetElement(args, 2)->data;
+        if (args->length >= 3) arg2 = getArray(args,  2);
         if (arg2 != NULL) {if (arg2->valueType != TYPE_ARRAY) fatalError(0x30, "", -1);}
         
         if (arg0->valueType != TYPE_NUM) fatalError(0x30, "", -1);
@@ -199,7 +199,7 @@ void mBases(auFunc) {
             typedValue* toApp = numToTV((num){.type = NUM_CHAR, .value.cVal = i == strlen(res) ? 0 : res[i]});
             toReturn->value.av.data[i] = toApp;
         };
-        List_InsertElement(vms->stack, 0, toReturn);
+        pushArray(vms->stack,toReturn);
 
         if (arg2 != NULL) free(charset);
         freeTypedValue(arg0);
@@ -210,13 +210,13 @@ void mBases(auFunc) {
 }
 // C implementation for log, log10, log2, & ln.
 void mLog(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_NUM) fatalError(0x30, "", -1);
     long double base = 0.0L;
     long double numn = convertNum(arg0->value.numberValue, NUM_LONGDOUBLE).value.ldVal;
     typedValue* arg1 = NULL;
     if (strcmp(identifier, "log") == 0) {
-        arg1 = List_GetElement(args, 1)->data;
+        arg1 = getArray(args,  1);
         if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);
         base = convertNum(arg1->value.numberValue, NUM_LONGDOUBLE).value.ldVal;
     }
@@ -227,15 +227,15 @@ void mLog(auFunc) {
     long double result = logl(numn)/logl(base); // log base change property
 
     typedValue* toReturn = numToTV(convertNum((num){.value.ldVal = result,.type = NUM_LONGDOUBLE}, arg0->value.numberValue.type));
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     freeTypedValue(arg0);
     if (arg1 != NULL) freeTypedValue(arg1);
 
 }
 // C implementation for hypot() & sidel().
 void mHypot(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
-    typedValue* arg1 = List_GetElement(args, 1)->data;
+    typedValue* arg0 = getArray(args,  0);
+    typedValue* arg1 = getArray(args,  1);
     if (arg0->valueType != TYPE_NUM) fatalError(0x30, "", -1);
     if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);
     long double a = convertNum(arg0->value.numberValue, NUM_LONGDOUBLE).value.ldVal;
@@ -251,7 +251,7 @@ void mHypot(auFunc) {
     long double result = strcmp(identifier, "hypot") == 0 ? sqrtl((a*a) + (b*b)) : sqrtl((b*b) - (a*a));
 
     typedValue* toReturn = numToTV(convertNum((num){.value.ldVal = result, .type = NUM_LONGDOUBLE}, arg0->value.numberValue.type));
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     freeTypedValue(arg0);
     freeTypedValue(arg1);
 }
@@ -268,7 +268,7 @@ bool inclusiveRangel(long double n, long double min, long double max) {
 }
 // Implementation for trig functions.
 void mTrig(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_NUM) fatalError(0x30, "", -1);
     if (arg0->value.numberValue.type < NUM_FLOAT) fatalError(0x30, "Only floats, doubles, or long doubles are valid for trig functions.",-1);
     long double n = convertNum(arg0->value.numberValue, NUM_LONGDOUBLE).value.ldVal;
@@ -378,12 +378,12 @@ void mTrig(auFunc) {
     }
 
     typedValue* toReturn = numToTV(convertNum((num){.value.ldVal = result,.type = NUM_LONGDOUBLE}, arg0->value.numberValue.type));
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     freeTypedValue(arg0);
 }
 // C implementation for dToR() and rToD().
 void mDegreeConversion(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_NUM) fatalError(0x30, "", -1);
     long double n = convertNum(arg0->value.numberValue, NUM_LONGDOUBLE).value.ldVal;
     long double toReturn = 0;
@@ -391,12 +391,12 @@ void mDegreeConversion(auFunc) {
     if (strcmp(identifier, "rToD") == 0) toReturn = rToD(n);
     int typeToReturn = arg0->value.numberValue.type >= NUM_FLOAT ? arg0->value.numberValue.type : NUM_FLOAT;
     typedValue* toReturnV = numToTV(convertNum((num){.value.ldVal = toReturn,.type = NUM_LONGDOUBLE}, typeToReturn));
-    List_InsertElement(vms->stack, 0, toReturnV);
+    pushArray(vms->stack,toReturnV);
     freeTypedValue(arg0);
 }
 // C implementations for ceil, floor, trunc, dPart, round, abs, & sign
 void mDecFuncs(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_NUM) fatalError(0x30, "", -1);
     long double n = convertNum(arg0->value.numberValue, NUM_LONGDOUBLE).value.ldVal;
     long double toReturn = 0;
@@ -410,7 +410,7 @@ void mDecFuncs(auFunc) {
         toReturn = n-roundedPart;
     }
     if (strcmp(identifier, "round") == 0) {
-        typedValue* arg1 = List_GetElement(args, 1)->data;
+        typedValue* arg1 = getArray(args,  1);
         if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);
         long double precision = convertNum(arg1->value.numberValue, NUM_LONGDOUBLE).value.ldVal;
         long double m = powl(10, -precision);
@@ -421,7 +421,7 @@ void mDecFuncs(auFunc) {
     if (strcmp(identifier, "sign") == 0) toReturn = n < 0 ? -1 : n > 0 ? 1 : 0;
     
     typedValue* toReturnV = numToTV(convertNum((num){.value.ldVal = toReturn,.type = NUM_LONGDOUBLE}, arg0->value.numberValue.type));
-    List_InsertElement(vms->stack, 0, toReturnV);
+    pushArray(vms->stack,toReturnV);
     freeTypedValue(arg0);
 }
 // gcd & lcm formulas.
@@ -454,7 +454,7 @@ void primeFactorization(int64_t aa, llarr* ll) {
     while (a > 1) {
         if (isPrime(i) && a % i == 0) {
             a /= i;
-            ll->data = srealloc(ll->data, (sizeof(int64_t) * (ll->len+1) ) );
+            ll = srealloc(ll, (sizeof(int64_t) * (ll->len+1) ) );
             ll->data[ll->len] = i;
             ll->len++;
             if (a == 1) break;
@@ -465,11 +465,11 @@ void primeFactorization(int64_t aa, llarr* ll) {
 }
 // C implementation for lcm, gcd, isPrime, primeFac, array_sum, & array_prod.
 void mNumberFunctions(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (strcmp(identifier, "lcm") == 0 || strcmp(identifier, "gcd") == 0) {
         if (arg0->valueType != TYPE_NUM) fatalError(0x30, "", -1);
         if (arg0->value.numberValue.type >= NUM_FLOAT) fatalError(0x30, "gcd & lcm only work with ints.", -1);
-        typedValue* arg1 = List_GetElement(args, 1)->data;
+        typedValue* arg1 = getArray(args,  1);
         if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);
         if (arg1->value.numberValue.type >= NUM_FLOAT) fatalError(0x30, "gcd & lcm only work with ints.", -1);
         int64_t a = convertNum(arg0->value.numberValue, NUM_LONG).value.lVal;
@@ -478,7 +478,7 @@ void mNumberFunctions(auFunc) {
         if (strcmp(identifier, "lcm") == 0) result = lcm(a, b);
         else result = gcd(a, b);
 
-        typedValue* toReturn = malloc(sizeof(typedValue));
+        typedValue* toReturn = poolAlloc(globalPool);
         *toReturn = (typedValue){
             .ptr = NULL,
             .value.numberValue = convertNum((num){
@@ -487,7 +487,7 @@ void mNumberFunctions(auFunc) {
             }, arg0->value.numberValue.type),
             .valueType = TYPE_NUM
         };
-        List_InsertElement(vms->stack, 0, toReturn);
+        pushArray(vms->stack,toReturn);
         freeTypedValue(arg0);
         freeTypedValue(arg1);
     }
@@ -496,7 +496,7 @@ void mNumberFunctions(auFunc) {
         if (arg0->value.numberValue.type >= NUM_FLOAT) fatalError(0x30, "isPrime() only works with integers.", -1);
         int64_t a = convertNum(arg0->value.numberValue, NUM_LONG).value.lVal;
         typedValue* toReturn = numToTV((num){.type = NUM_BOOL, .value.bVal=isPrime(a)});
-        List_InsertElement(vms->stack, 0, toReturn);
+        pushArray(vms->stack,toReturn);
         freeTypedValue(arg0);
     }
     else if (strcmp(identifier, "primeFac") == 0) {
@@ -505,7 +505,7 @@ void mNumberFunctions(auFunc) {
         int64_t a = convertNum(arg0->value.numberValue, NUM_LONG).value.lVal;
         llarr p = (llarr){.data = malloc(1), .len = 0};
         primeFactorization(a, &p);
-        typedValue* toReturn = malloc(sizeof(typedValue));
+        typedValue* toReturn = poolAlloc(globalPool);
         *toReturn = (typedValue){
             .ptr = NULL,
             .valueType = TYPE_ARRAY,
@@ -519,7 +519,7 @@ void mNumberFunctions(auFunc) {
             typedValue* toAdd = numToTV(convertNum((num){.value.lVal = p.data[i],.type = NUM_LONG}, arg0->value.numberValue.type));
             toReturn->value.av.data[i] = toAdd;
         }
-        List_InsertElement(vms->stack, 0, toReturn);
+        pushArray(vms->stack,toReturn);
         freeTypedValue(arg0);
         free(p.data);
     }
@@ -540,7 +540,7 @@ void mNumberFunctions(auFunc) {
             }
         }
         typedValue* toReturn = numToTV(convertNum((num){.value.ldVal = result, .type = NUM_LONGDOUBLE}, type));
-        List_InsertElement(vms->stack, 0, toReturn);
+        pushArray(vms->stack,toReturn);
         freeTypedValue(arg0);
     }
 }
@@ -586,7 +586,7 @@ int cmpLD(const void* av, const void* bv) {
 }
 // C implementation for array_mean, array_median, & array_quantiles.
 void mListOp(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_ARRAY) fatalError(0x30, "", -1);
     if (arg0->value.av.arrayType != AT_NUM) fatalError(0x30, "", -1);
 
@@ -602,10 +602,10 @@ void mListOp(auFunc) {
     }
     if (strcmp(identifier, "array_mean") == 0 || strcmp(identifier, "array_median") == 0) {
         long double result = strcmp(identifier, "array_median") == 0 ? median(arr, len) : mean(arr, len);
-        List_InsertElement(vms->stack, 0, numToTV(convertNum((num){.type = NUM_LONGDOUBLE, .value.ldVal = result}, type) ) );
+        pushArray(vms->stack,numToTV(convertNum((num){.type = NUM_LONGDOUBLE, .value.ldVal = result}, type) ) );
     }
     else {
-        typedValue* arg1 = List_GetElement(args, 1)->data;
+        typedValue* arg1 = getArray(args,  1);
         if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);
         int q = convertNum(arg1->value.numberValue, NUM_INT).value.iVal;
         qsort(arr, len, sizeof(long double), cmpLD);
@@ -614,7 +614,7 @@ void mListOp(auFunc) {
         for (int i = 0; i < q-1; i++) {
             toReturn->value.av.data[i] = numToTV(convertNum((num){.type = NUM_LONGDOUBLE, .value.ldVal=res[i]}, type));
         }
-        List_InsertElement(vms->stack, 0, toReturn);
+        pushArray(vms->stack,toReturn);
     }
 
     free(arr);

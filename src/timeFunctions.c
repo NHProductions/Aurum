@@ -25,10 +25,10 @@ int getMSint() {
 }
 // C implementations for time(), clock(), toUTC(), & sleep().
 void tTime(auFunc) {
-    if (strcmp(identifier, "time") == 0) {List_InsertElement(vms->stack, 0, numToTV((num){.type = NUM_LONG, .value.lVal = (int64_t)time(NULL)})); return;}
-    if (strcmp(identifier, "clock") == 0) {List_InsertElement(vms->stack, 0, numToTV((num){.type = NUM_LONG, .value.lVal = (int64_t)clock()})); return;}
+    if (strcmp(identifier, "time") == 0) {pushArray(vms->stack,numToTV((num){.type = NUM_LONG, .value.lVal = (int64_t)time(NULL)})); return;}
+    if (strcmp(identifier, "clock") == 0) {pushArray(vms->stack,numToTV((num){.type = NUM_LONG, .value.lVal = (int64_t)clock()})); return;}
     if (strcmp(identifier, "toUTC") == 0) {
-        typedValue* arg0 = List_GetElement(args, 0)->data;
+        typedValue* arg0 = getArray(args,  0);
         if (arg0->valueType != TYPE_NUM) {fatalError(0x30, "", -1);}
         if (arg0->value.numberValue.type >= NUM_FLOAT) fatalError(0x30, "", -1);
         int64_t t = convertNum(arg0->value.numberValue, NUM_LONG).value.lVal;
@@ -37,7 +37,7 @@ void tTime(auFunc) {
         if (utc == NULL) {
             fatalError(0x30, "Time conversion failed.", -1);
         }
-        typedValue* toReturn = malloc(sizeof(typedValue));
+        typedValue* toReturn = poolAlloc(globalPool);
         *toReturn = (typedValue){
             .ptr = NULL,
             .value.so.def = getStructDefViaName("UTCTime", *vms->bc),
@@ -62,7 +62,7 @@ void tTime(auFunc) {
             toReturn->value.so.fields[i]->ptr = sp;
         }
         free(arg0);
-        List_InsertElement(vms->stack, 0, toReturn);
+        pushArray(vms->stack,toReturn);
     }
     if (strcmp(identifier, "getUTC") == 0) {
         time_t conv = time(NULL);
@@ -70,7 +70,7 @@ void tTime(auFunc) {
         if (utc == NULL) {
             fatalError(0x30, "Time conversion failed.", -1);
         }
-        typedValue* toReturn = malloc(sizeof(typedValue));
+        typedValue* toReturn = poolAlloc(globalPool);
         *toReturn = (typedValue){
             .ptr = NULL,
             .value.so.def = getStructDefViaName("UTCTime", *vms->bc),
@@ -94,10 +94,10 @@ void tTime(auFunc) {
             sp->idx = i;
             toReturn->value.so.fields[i]->ptr = sp;
         }
-        List_InsertElement(vms->stack, 0, toReturn);
+        pushArray(vms->stack,toReturn);
     }
     if (strcmp(identifier, "sleep") == 0) {
-        typedValue* arg0 = List_GetElement(args, 0)->data;
+        typedValue* arg0 = getArray(args,  0);
         if (arg0->valueType != TYPE_NUM) fatalError(0x30, "", -1);
         int64_t ms = convertNum(arg0->value.numberValue, NUM_LONG).value.lVal;
         if (ms < 0) fatalError(0x30, "", -1);

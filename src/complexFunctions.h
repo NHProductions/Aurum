@@ -15,6 +15,7 @@ struct cplxNum {\n\
         return this;\n\
     }\n\
     function cabs() -> double128 {return hypot(this.a, this.b);}\n\
+    function op_len() -> double128 {return this.cabs();}\n\
     function carg() -> double128 {\n\
         if (this.a == 0) {return 0;}\n\
         return atan(this.b/this.a);\n\
@@ -32,6 +33,7 @@ struct cplxNum {\n\
     function op_add(cplxNum n) -> cplxNum {return cplxNum(this.a+n.a, this.b+n.b);}\n\
     function op_sub(cplxNum n) -> cplxNum {return cplxNum(this.a-n.a, this.b-n.b);}\n\
     function op_mul(cplxNum n) -> cplxNum {return cplxNum((this.a*n.a)-(this.b*n.b), (this.a*n.b)+(n.a*this.b));}\n\
+    function op_exp(cplxNum n) -> cplxNum {return cpow(this, n);}\n\
 }\n\
 ";
 static const bcFunction cplxFunctions[] = {

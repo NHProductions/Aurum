@@ -23,7 +23,7 @@ long double complex tvToCLD(typedValue* tv) {
 typedValue* cldToTV(long double complex cld, virtualMachineState* vms) {
     typedValue* a = numToTV((num){.type = NUM_LONGDOUBLE, .value.ldVal=creall(cld)});
     typedValue* bi = numToTV((num){.type = NUM_LONGDOUBLE, .value.ldVal=cimagl(cld)});
-    typedValue* structToReturn = malloc(sizeof(typedValue));
+    typedValue* structToReturn = poolAlloc(globalPool);
     stackPtr* aptr = malloc(sizeof(stackPtr)); stackPtr* bptr = malloc(sizeof(stackPtr));
     *aptr = *bptr = (stackPtr){
         .addr = structToReturn,
@@ -46,54 +46,54 @@ typedValue* cldToTV(long double complex cld, virtualMachineState* vms) {
 // C implementation for cexp(), ctxp(), cln(), clog2(), clog10(), cpow(), & clog().
 void cExponentialFuncs(auFunc) {
 
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args, 0);
     long double complex cld0 = tvToCLD(arg0);
     long double complex result = 0+0*I;
     if (strcmp(identifier, "cexp") == 0) {
         result = cexpl(cld0);
-        List_InsertElement(vms->stack, 0, cldToTV(result, vms));
+        pushArray(vms->stack, cldToTV(result, vms));
         freeTypedValue(arg0);
     }
     if (strcmp(identifier, "ctxp") == 0) {
         result = cpowl(2+0*I, cld0);
-        List_InsertElement(vms->stack, 0, cldToTV(result, vms));
+        pushArray(vms->stack, cldToTV(result, vms));
         freeTypedValue(arg0);
     }
     if (strcmp(identifier, "cln") == 0) {
         result = clogl(cld0);
-        List_InsertElement(vms->stack, 0, cldToTV(result, vms));
+        pushArray(vms->stack, cldToTV(result, vms));
         freeTypedValue(arg0);
     }
     if (strcmp(identifier, "clog2") == 0) {
         result = clogl(cld0)/clogl(2+0*I);
-        List_InsertElement(vms->stack, 0, cldToTV(result, vms));
+        pushArray(vms->stack, cldToTV(result, vms));
         freeTypedValue(arg0);
     }
     if (strcmp(identifier, "clog10") == 0) {
         result = clogl(cld0)/clogl(10+0*I);
-        List_InsertElement(vms->stack, 0, cldToTV(result, vms));
+        pushArray(vms->stack, cldToTV(result, vms));
         freeTypedValue(arg0);
     }
     if (strcmp(identifier, "cpow") == 0) {
-        typedValue* arg1 = List_GetElement(args, 1)->data;
+        typedValue* arg1 = getArray(args, 1);
         long double complex cld1 = tvToCLD(arg1);
         result = cpowl(cld0, cld1);
-        List_InsertElement(vms->stack, 0, cldToTV(result, vms));
+        pushArray(vms->stack, cldToTV(result, vms));
         freeTypedValue(arg0);
         freeTypedValue(arg1);
     }
     if (strcmp(identifier, "clog") == 0) {
-        typedValue* arg1 = List_GetElement(args, 1)->data;
+        typedValue* arg1 = getArray(args, 1);
         long double complex cld1 = tvToCLD(arg1);
         result = clogl(cld0)/clogl(cld1);
-        List_InsertElement(vms->stack, 0, cldToTV(result, vms));
+        pushArray(vms->stack, cldToTV(result, vms));
         freeTypedValue(arg0);
         freeTypedValue(arg1);
     }
 }
 // C implementation for complex trig functions
 void cTrig(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args, 0);
     long double complex n = tvToCLD(arg0);
     long double complex result = 0+0*I;
     char* idx = identifier;
@@ -186,6 +186,6 @@ void cTrig(auFunc) {
         result = casinhl(1.0L / n);
     }
 
-    List_InsertElement(vms->stack, 0, cldToTV(result, vms));
+    pushArray(vms->stack, cldToTV(result, vms));
     freeTypedValue(arg0);
 }

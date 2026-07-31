@@ -17,7 +17,8 @@
 #include <Windows.h>
 #include <direct.h>
 #include "num.h"
-#define auFunc virtualMachineState* vms, char* identifier, List* args
+#include "array.h"
+#define auFunc virtualMachineState* vms, char* identifier, array* args
 #define auFuncCall vms, identifier, args
 
 char* sPrint(auFunc, bool);

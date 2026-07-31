@@ -11,15 +11,16 @@ This file contains definitions used in bytecoder.c & vm.c, and standard-library 
 #include "parser.h"
 #include "Tundora.h"
 #include "num.h"
+#include "array.h"
 extern char* toExec;
 extern char* projectFolder;
 // struct that is exported from toBytecode().
 typedef struct {
-    List* globals;
-    List* constants;
-    List* functionIdentifiers;
-    List* chunks;
-    List* structDefs;
+    array* globals;
+    array* constants;
+    array* functionIdentifiers;
+    array* chunks;
+    array* structDefs;
 } byteCode;
 // opcode enums
 typedef enum {
@@ -93,8 +94,11 @@ typedef struct arrayValue {
 } arrayValue;
 typedef struct {
     char* name;
-    List* fields;
-    List* fieldTypes;
+} structField;
+typedef struct {
+    char* name;
+    array* fields;
+    array* fieldTypes;
 } structDefinition;
 typedef struct typedValue {
     union {
@@ -131,7 +135,7 @@ typedef struct {
     char code;
 } instruction;
 typedef struct {
-    List* instructions;
+    array* instructions;
     char* name;
 } chunk;
 typedef struct {
@@ -190,6 +194,8 @@ static const bcFunction defaultFunctions[] = {
     // Error-Handling
     {.name = "throw", .argc = 1, .returnStruct = NULL},
     {.name = "exit", .argc = 0, .returnStruct = NULL},
+
+    {.name = "typeof", .argc = 1, .returnStruct = "string"},
     {.name = "", .argc = -1} // Terminator
 };
 

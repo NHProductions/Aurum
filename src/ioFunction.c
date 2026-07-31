@@ -27,12 +27,12 @@ char* fmToStr(fileMode fm) {
 }
 // Implementation for fopen(); Opens a file, and returns it as a file struct (see ioFunctions.h)
 void fNewFile(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_ARRAY) fatalError(0x30, "", -1);
     if (arg0->value.av.arrayType != AT_CHARARR) fatalError(0x30, "", -1);
     char* pathToOpen = strArrToChar(arg0);
 
-    typedValue* arg1 = List_GetElement(args, 1)->data;
+    typedValue* arg1 = getArray(args,  1);
     if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);
     int mode = convertNum(arg1->value.numberValue, NUM_INT).value.iVal;
     FILE* n = NULL;
@@ -61,7 +61,7 @@ void fNewFile(auFunc) {
     ptr = (int64_t)n;
     if (n != NULL) pos = ftell(n);
     else pos = 0;
-    typedValue* toReturn = malloc(sizeof(typedValue));
+    typedValue* toReturn = poolAlloc(globalPool);
     *toReturn = (typedValue){
         .valueType = TYPE_STRUCT,
         .ptr = NULL,
@@ -74,13 +74,13 @@ void fNewFile(auFunc) {
     toReturn->value.so.fields[1] = numToTV((num){.type = NUM_LONG, .value.lVal = pos});
     toReturn->value.so.fields[2] = numToTV((num){.type = NUM_INT, .value.iVal = mode});
     toReturn->value.so.fields[3] = arg0;
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack, toReturn);
     freeTypedValue(arg1);
     free(pathToOpen);
 }
 // Implementation for file_close().
 void fClose(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_STRUCT) fatalError(0x30, "", -1);
     if (strcmp("file", arg0->value.so.def->name) != 0) fatalError(0x30, "", -1);
     FILE* n = (FILE*)arg0->value.so.fields[0]->value.numberValue.value.lVal;
@@ -101,14 +101,14 @@ void fClose(auFunc) {
 // Implementation for file_read(), file_getChar(), file_getLine, and file_getStr
 void fRead(auFunc) {
 
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_STRUCT) fatalError(0x30, "", -1);
     if (strcmp(arg0->value.so.def->name, "file") != 0) fatalError(0x30, "", -1);
     FILE* f = (FILE*)arg0->value.so.fields[0]->value.numberValue.value.lVal;
     int64_t newPos = convertNum(arg0->value.so.fields[1]->value.numberValue, NUM_LONG).value.lVal;
     if (strcmp(identifier, "file_getChar") == 0) {
         int c = fgetc(f);
-        List_InsertElement(vms->stack, 0, numToTV((num){.type = NUM_INT, .value.iVal = c}));
+        pushArray(vms->stack, numToTV((num){.type = NUM_INT, .value.iVal = c}));
         if (c != -1) newPos++;
     }
     if (strcmp(identifier, "file_getLine") == 0 || strcmp(identifier, "file_read") == 0 || strcmp(identifier, "file_getStr") == 0 ) {
@@ -118,7 +118,7 @@ void fRead(auFunc) {
         typedValue* toReturn = newTVArray(0, AT_CHARARR);
         int64_t numToRead = INT64_MAX;
         if (strcmp(identifier, "file_getStr") == 0) {
-            typedValue* arg1 = List_GetElement(args, 1)->data;
+            typedValue* arg1 = getArray(args,  1);
             if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);
             numToRead = convertNum(arg1->value.numberValue, NUM_LONG).value.lVal;
             freeTypedValue(arg1);
@@ -129,7 +129,7 @@ void fRead(auFunc) {
         }
         appendTypedValue(toReturn, numToTV((num){.type = NUM_CHAR, .value.cVal = 0}));
         newPos = newPos+toReturn->value.av.len-1;
-        List_InsertElement(vms->stack, 0, toReturn);
+        pushArray(vms->stack, toReturn);
     }
 
     stackPtr* sp = (stackPtr*)arg0->ptr;
@@ -148,16 +148,15 @@ void fRead(auFunc) {
 }
 // C implementation for file_writef, file_putChar, & file_putStr()
 void fWrite(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_STRUCT) fatalError(0x30, "", -1);
     if (strcmp(arg0->value.so.def->name, "file") != 0) fatalError(0x30, "", -1);
     FILE* f = (FILE*)arg0->value.so.fields[0]->value.numberValue.value.lVal;
     int64_t newPos = convertNum(arg0->value.so.fields[1]->value.numberValue, NUM_LONG).value.lVal;
     if (strcmp(identifier, "file_writef") == 0) {
-        List* toSendArgs = malloc(sizeof(List));
-        *toSendArgs = NewList();
+        array* toSendArgs = mallocArray(0);
         for (int i = 1; i < args->length; i++) {
-            List_AppendElement(toSendArgs, List_GetElement(args, i)->data);
+            appendArray(toSendArgs, getArray(args, i));
         }
         char* toWrite = sPrint(vms, "print", toSendArgs, true);
         fwrite(toWrite, 1, strlen(toWrite), f);
@@ -165,14 +164,14 @@ void fWrite(auFunc) {
         free(toWrite);
     }
     if (strcmp(identifier, "file_putChar") == 0) {
-        typedValue* arg1 = List_GetElement(args, 1)->data;
+        typedValue* arg1 = getArray(args,  1);
         if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);
         char toWrite = convertNum(arg1->value.numberValue, NUM_CHAR).value.cVal;
         fputc(toWrite, f);
         newPos++;
     }
     if (strcmp(identifier, "file_putStr") == 0) {
-        typedValue* arg1 = List_GetElement(args, 1)->data;
+        typedValue* arg1 = getArray(args,  1);
         if (arg1->valueType != TYPE_ARRAY) fatalError(0x30, "", -1);
         if (arg1->value.av.arrayType != AT_CHARARR) fatalError(0x30, "", -1);
         char* toWrite = strArrToChar(arg1);
@@ -197,7 +196,7 @@ void fWrite(auFunc) {
 }
 // C implementation for file_size().
 void fSize(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_STRUCT) fatalError(0x30, "", -1);
     if (strcmp(arg0->value.so.def->name, "file") != 0) fatalError(0x30, "", -1);
     FILE* f = (FILE*)arg0->value.so.fields[0]->value.numberValue.value.lVal;
@@ -205,12 +204,12 @@ void fSize(auFunc) {
     fseek(f, 0, SEEK_END);
     int64_t size = ftell(f);
     fseek(f, newPos, SEEK_SET);
-    List_InsertElement(vms->stack, 0, numToTV((num){.type = NUM_LONG, .value.lVal = size}));
+    pushArray(vms->stack, numToTV((num){.type = NUM_LONG, .value.lVal = size}));
     freeTypedValue(arg0);
 }
 // C implementation for file_delete & file_rename
 void fModify(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_STRUCT) fatalError(0x30, "", -1);
     if (strcmp(arg0->value.so.def->name, "file") != 0) fatalError(0x30, "", -1);
     FILE* f = (FILE*)arg0->value.so.fields[0]->value.numberValue.value.lVal;
@@ -226,7 +225,7 @@ void fModify(auFunc) {
     }
     if (strcmp(identifier, "file_rename") == 0) {
         fclose(f);
-        typedValue* arg1 = List_GetElement(args, 1)->data;
+        typedValue* arg1 = getArray(args,  1);
         if (arg1->valueType != TYPE_ARRAY) fatalError(0x30, "", -1);
         if (arg1->value.av.arrayType != AT_CHARARR) fatalError(0x30, "", -1);
         char* newName = strArrToChar(arg1);
@@ -264,7 +263,7 @@ void fDirectory(auFunc) {
     {.name = "renameDirectory", .argc = 1, .returnStruct = NULL},
     {.name = "getFiles", .argc = 1, .returnStruct = NULL},
     */
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_ARRAY) fatalError(0x30, "", -1);
     if (arg0->value.av.arrayType != AT_CHARARR) fatalError(0x30, "", -1);
     char* path = strArrToChar(arg0);
@@ -280,7 +279,7 @@ void fDirectory(auFunc) {
         free(path);        
     }
     if (strcmp(identifier, "renameDirectory") == 0) {
-        typedValue* arg1 = List_GetElement(args, 1)->data;
+        typedValue* arg1 = getArray(args,  1);
         if (arg1->valueType != TYPE_ARRAY) fatalError(0x30, "", -1);
         if (arg1->value.av.arrayType != AT_CHARARR) fatalError(0x30, "", -1);
         char* renamed = strArrToChar(arg1);
@@ -309,7 +308,7 @@ void fDirectory(auFunc) {
             free(toAdd);
 
         } while (FindNextFile(hfind, &f) != 0);
-        typedValue* toReturn = malloc(sizeof(typedValue));
+        typedValue* toReturn = poolAlloc(globalPool);
         *toReturn = (typedValue){
             .ptr = NULL,
             .value.so = (struct structObject){
@@ -320,7 +319,7 @@ void fDirectory(auFunc) {
         };
         toReturn->value.so.fields[0] = files;
         toReturn->value.so.fields[1] = dirs;
-        List_InsertElement(vms->stack, 0, toReturn);
+        pushArray(vms->stack, toReturn);
         free(path);
     }
     freeTypedValue(arg0);

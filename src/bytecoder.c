@@ -126,8 +126,8 @@ char* projectFolder = NULL;
 
 void printBytecode(byteCode c, bool numsOnly, bool numberInstructions);
 // When given a chunkidx and a bytecode struct, get the list of instructions from that chunk.
-List* getInstructions(byteCode c, int chunkIdx) {
-    return ((chunk*)List_GetElement(c.chunks, chunkIdx)->data)->instructions;
+array* getInstructions(byteCode c, int chunkIdx) {
+    return ((chunk*)getArray(c.chunks, chunkIdx))->instructions;
 }
 // Unary instruction: Only 1 argument (e.x LOAD_CONST n).
 void addUnaryInstruction(byteCode c, char code, int arg, int chunkIdx) {
@@ -136,7 +136,7 @@ void addUnaryInstruction(byteCode c, char code, int arg, int chunkIdx) {
     toAdd->args[0] = arg;
     toAdd->argc = 1;
     toAdd->code = code;
-    List_AppendElement(getInstructions(c, chunkIdx), toAdd);
+    appendArray(getInstructions(c, chunkIdx), toAdd);
 }
 // Nullary instruction: No argument (e.x ADD)
 void addNullaryInstruction(byteCode c, char code, int chunkIdx) {
@@ -144,7 +144,7 @@ void addNullaryInstruction(byteCode c, char code, int chunkIdx) {
     toAdd->args = NULL;
     toAdd->argc = 0;
     toAdd->code = code;
-    List_AppendElement(getInstructions(c, chunkIdx), toAdd);
+    appendArray(getInstructions(c, chunkIdx), toAdd);
 }
 // Binary instruction: 2 arguments (e.x CALL 7 2)
 void addBinaryInstruction(byteCode c, char code, int arg0, int arg1, int chunkIdx) {
@@ -154,7 +154,7 @@ void addBinaryInstruction(byteCode c, char code, int arg0, int arg1, int chunkId
     toAdd->args[0] = arg0;
     toAdd->args[1] = arg1;
     toAdd->code = code;
-    List_AppendElement(getInstructions(c, chunkIdx), toAdd);
+    appendArray(getInstructions(c, chunkIdx), toAdd);
 }
 // Converts numType to PDT type.
 int numTypeToPDT(int t) {
@@ -221,7 +221,7 @@ structDefinition* isConstructor(char* funcName, byteCode c) {
         return NULL;
     }
     for (int i = 0; i < c.structDefs->length; i++) {
-        structDefinition* sd = (structDefinition*)List_GetElement(c.structDefs, i)->data;
+        structDefinition* sd = (structDefinition*)getArray(c.structDefs, i);
         if (strcmp(sd->name, sideA) == 0) {
             free(sideB);
             free(sideA);
@@ -236,8 +236,8 @@ structDefinition* isConstructor(char* funcName, byteCode c) {
 structDefinition* getStructDefViaName(char* name, byteCode c) {
     if (name == NULL) return NULL;
     for (int i = 0; i < c.structDefs->length; i++) {
-        if (strcmp(((structDefinition*)List_GetElement(c.structDefs, i)->data)->name, name) == 0) {
-            return (structDefinition*)List_GetElement(c.structDefs, i)->data;
+        if (strcmp(((structDefinition*)getArray(c.structDefs, i))->name, name) == 0) {
+            return (structDefinition*)getArray(c.structDefs, i);
         }
     }
     return NULL;
@@ -259,7 +259,8 @@ identifierLocation getIdentifier(byteCode c, scopeInfo s, char* name) {
         }
     }
     for (int i = 0; i < c.globals->length; i++) {
-            vmVariable* tv = List_GetElement(c.globals, i)->data;
+            
+            vmVariable* tv = getArray(c.globals, i);
             if (strcmp(tv->name, name) == 0) {
                 return (identifierLocation){.exists = true, .isGlobal = true, .index = i, .ptr = tv};
             }
@@ -270,13 +271,44 @@ identifierLocation getIdentifier(byteCode c, scopeInfo s, char* name) {
 bcFunction* getFunctionIdentifier(char* n, byteCode c) {
     bcFunction* bcf = NULL;
     for (int i = 0; i < c.functionIdentifiers->length; i++) {
-            bcFunction* b = (bcFunction*)List_GetElement(c.functionIdentifiers, i)->data;
+            bcFunction* b = (bcFunction*)getArray(c.functionIdentifiers, i);
             if (strcmp(b->name, n) == 0) {
                 bcf = b;
                 break;
             } 
     }
     return bcf;
+}
+char* opToFunc(char* operator, bool isUnary) {
+    if (strcmp(operator, "-") == 0 && !isUnary) return "op_sub";
+    if (strcmp(operator, "-") == 0 && isUnary) return "op_neg";
+    if (strcmp(operator, "+") == 0 && !isUnary) return "op_add";
+    if (strcmp(operator, "*") == 0 && !isUnary) return "op_mul";
+    if (strcmp(operator, "/") == 0 && !isUnary) return "op_div";
+
+    if (strcmp(operator, "&&") == 0 && !isUnary) return "op_and";
+    if (strcmp(operator, "||") == 0 && !isUnary) return "op_or";
+    if (strcmp(operator, "^^") == 0 && !isUnary) return "op_xor";
+    if (strcmp(operator, "!=") == 0 && !isUnary) return "op_neq";
+    if (strcmp(operator, "==") == 0 && !isUnary) return "op_eq";
+    if (strcmp(operator, ">=") == 0 && !isUnary) return "op_geqthan";
+    if (strcmp(operator, "<=") == 0 && !isUnary) return "op_leqthan";
+    if (strcmp(operator, ">") == 0 && !isUnary) return "op_gthan";
+    if (strcmp(operator, "<") == 0 && !isUnary) return "op_lthan";
+    if (strcmp(operator, "!") == 0 && isUnary) return "op_not";
+
+    if (strcmp(operator, "&") == 0 && !isUnary) return "op_band";
+    if (strcmp(operator, "|") == 0 && !isUnary) return "op_bor";
+    if (strcmp(operator, "^") == 0 && !isUnary) return "op_bxor";
+    if (strcmp(operator, "~") == 0 && isUnary) return "op_bnot";
+    if (strcmp(operator, "<<") == 0 && !isUnary) return "op_lshift";
+    if (strcmp(operator, ">>") == 0 && !isUnary) return "op_rshift";
+
+    if (strcmp(operator, "%") == 0 && !isUnary) return "op_mod";
+    if (strcmp(operator, "//") == 0 && !isUnary) return "op_fdiv";
+    if (strcmp(operator, "**") == 0 && !isUnary) return "op_exp";
+    if (strcmp(operator, "#") == 0 && isUnary) return "op_len";
+    return NULL;
 }
 // When given a complex statement such as n.a.b or n.a().b, get it's structDefinition.
 structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
@@ -302,7 +334,7 @@ structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
         }
         if (idx == -1) {
             for (int i = 0; i < c.globals->length; i++) {
-                vmVariable* vmv = (vmVariable*)List_GetElement(c.globals, i)->data;
+                vmVariable* vmv = getArray(c.globals, i);
                 if (strcmp(vmv->name, parentVarName) == 0) {
                     structName = vmv->structType;
                     idx = i;
@@ -315,17 +347,17 @@ structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
         if (structName == NULL) { if (isDebug) {printf("Structname null");} return NULL;}
         structDefinition* structDef = NULL;
         for (int i = 0; i < c.structDefs->length; i++) {
-            structDefinition* sd = (structDefinition*)List_GetElement(c.structDefs, i)->data;
+            structDefinition* sd = (structDefinition*)getArray(c.structDefs, i);
             if (strcmp(sd->name, structName) == 0) {
                 structDef = sd;
                 for (int j = 0; j < sd->fields->length; j++) {
-                    char* currentField = (char*)List_GetElement(sd->fields, j)->data;
-                    structTypes* fieldType = (structTypes*)List_GetElement(sd->fieldTypes, j)->data;
+                    char* currentField = ((structField*)getArray(sd->fields, j))->name;
+                    structTypes* fieldType = (structTypes*)getArray(sd->fieldTypes, j);
                     if (strcmp(currentField, currentNode->right->value.nameVal) == 0) {
-                        if (!fieldType->isPDT) {
+                        if (fieldType->isArray) return getStructDefViaName("array", c);
+                        else if (!fieldType->isPDT) {
                             return getStructDefViaName(fieldType->type.name, c);
                         }
-                        if (fieldType->isArray) return getStructDefViaName("array", c);
                         else if (fieldType->type.pdtType == PDT_STRING) return getStructDefViaName("string", c);
                         return NULL;
                     }
@@ -334,7 +366,7 @@ structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
         }
         char n[500]; n[0] = '\0'; sprintf(n, "%s_%s", structDef->name, currentNode->right->value.nameVal); // check function declarations
         for (int i = 0; i < c.functionIdentifiers->length; i++) {
-            bcFunction* bcf = List_GetElement(c.functionIdentifiers, i)->data;
+            bcFunction* bcf = getArray(c.functionIdentifiers, i);
             if (strcmp(bcf->name, n) == 0) {
                 return getStructDefViaName(bcf->returnStruct, c);
             }
@@ -346,8 +378,8 @@ structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
         structDefinition* sd = getStructType(currentNode->left, c, s);
         if (sd == NULL) {return NULL;};
         for (int i = 0; i < sd->fields->length; i++) {
-            char* fieldName = (char*)List_GetElement(sd->fields, i)->data;
-            structTypes* fieldType = (structTypes*)List_GetElement(sd->fieldTypes, i)->data;
+            char* fieldName = ((structField*)getArray(sd->fields, i))->name;
+            structTypes* fieldType = (structTypes*)getArray(sd->fieldTypes, i);
             if (strcmp(fieldName, currentNode->right->value.nameVal) == 0) {
                 if (!fieldType->isPDT) {
                     return getStructDefViaName(fieldType->type.name,c);
@@ -378,7 +410,7 @@ structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
         }
         if (idx == -1) {
             for (int i = 0; i < c.globals->length; i++) {
-                vmVariable* vmv = (vmVariable*)List_GetElement(c.globals, i)->data;
+                vmVariable* vmv = getArray(c.globals, i);
                 if (strcmp(vmv->name, parentVarName) == 0) {
                     structName = vmv->structType;
                     idx = i;
@@ -391,11 +423,26 @@ structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
         if (structName == NULL) {if (isDebug) {printf("NULL NAME");} return NULL;}
         if (!arrayVerified) {if (isDebug) {printf("Fake array");} return NULL;} // not actually an array
         for (int i = 0; i < c.structDefs->length; i++) {
-            structDefinition* sd = List_GetElement(c.structDefs, i)->data;
+            structDefinition* sd = getArray(c.structDefs, i);
             if (strcmp(sd->name, structName) == 0) {
                 return getStructDefViaName(sd->name, c);
             }
         }
+        return NULL;
+    }
+    else if (currentNode->type == AST_ARRAYACCESS && currentNode->left->type == AST_STRUCTACCESS) {
+        // cn.left = a.b = array
+        structDefinition* a = getStructType(currentNode->left->left, c, s);
+        structTypes* st = NULL;
+        for (int i = 0; i < a->fieldTypes->length; i++) {
+            structField* sf = getArray(a->fields, i);
+            if (strcmp(sf->name, currentNode->left->right->value.nameVal) == 0) {            
+                structTypes* s = getArray(a->fieldTypes, i);
+                if (s->isPDT) return s->type.pdtType == PDT_STRING ? getStructDefViaName("string", c) : NULL;
+                return getStructDefViaName(s->type.name, c);
+            }
+        }
+        
         return NULL;
     }
     // n.a[0]
@@ -404,8 +451,8 @@ structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
         
         if (sd == NULL) {return NULL;};
         for (int i = 0; i < sd->fields->length; i++) {
-            char* fieldName = (char*)List_GetElement(sd->fields, i)->data;
-            structTypes* fieldType = (structTypes*)List_GetElement(sd->fieldTypes, i)->data;
+            char* fieldName = ((structField*)getArray(sd->fields, i))->name;
+            structTypes* fieldType = (structTypes*)getArray(sd->fieldTypes, i);
             if (strcmp(fieldName, currentNode->right->value.nameVal) == 0) {
                 if (!fieldType->isPDT) {
                     return getStructDefViaName(fieldType->type.name,c);
@@ -418,7 +465,7 @@ structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
     else if (currentNode->type == AST_FUNCCALL) {
         if (currentNode->left->type == AST_STRUCTACCESS) {
             structDefinition* sd = getStructType(currentNode->left, c, s);
-            return sd;
+            if (sd == NULL) return sd;
             char n[500]; n[0] = '\0'; sprintf(n, "%s_%s", sd->name, currentNode->left->right->value.nameVal);
             bcFunction* funcDef = getFunctionIdentifier(n, c);
             if (funcDef == NULL) return NULL;
@@ -428,6 +475,24 @@ structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
             bcFunction* funcDef = getFunctionIdentifier(currentNode->left->value.nameVal, c);
             if (funcDef == NULL) return NULL;
             return getStructDefViaName(funcDef->returnStruct, c);
+        }
+    }
+    else if (currentNode->type == AST_OPERATOR) {
+        structDefinition* left = currentNode->left == NULL ? NULL : getStructType(currentNode->left, c, s);
+        structDefinition* right = currentNode->right == NULL ? NULL : getStructType(currentNode->right, c, s);
+        
+        if ((left == NULL && right == NULL && currentNode->left != NULL) || (currentNode->left == NULL && right == NULL)) return NULL;
+        // if left is null, find right.op_add
+        // if right is null, find left.op_add
+        structDefinition* toFind = left == NULL ? right : left;
+        char* opFuncName = opToFunc(currentNode->value.opVal, currentNode->left == NULL);
+        char buffer[50]; sprintf(buffer, "%s_%s", toFind->name, opFuncName);
+        for (int i = 0; i < c.functionIdentifiers->length; i++) {
+            bcFunction* bcf = getArray(c.functionIdentifiers, i);
+            if (strcmp(bcf->name, buffer) == 0) {
+                if (bcf->returnStruct == NULL) return NULL;
+                return getStructDefViaName(bcf->returnStruct, c);
+            }
         }
     }
     // a().b
@@ -443,7 +508,7 @@ structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
             structDefinition* sd = getStructDefViaName(fer->returnStruct, c);
             // if sd.rightID exists, then return sd.
             for (int j = 0; j < sd->fields->length; j++) {
-                char* fieldName = (char*)List_GetElement(sd->fields, j)->data;
+                char* fieldName = ((structField*)getArray(sd->fields, j))->name;
                 if (strcmp(fieldName, rightID) == 0) {
                     return sd;
                 }
@@ -451,7 +516,7 @@ structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
             // if sd.rightFunc() exists, then return the struct definition of that.
             char buffer[50]; buffer[0] = '\0'; sprintf(buffer, "%s_%s", sd->name, rightID);
             for (int i = 0; i < c.functionIdentifiers->length; i++) {
-                bcFunction* bcf = List_GetElement(c.functionIdentifiers, i)->data;
+                bcFunction* bcf = getArray(c.functionIdentifiers, i);
                 if (strcmp(bcf->name, buffer) == 0) {
                     if (bcf->returnStruct == NULL) return NULL;
                     return getStructDefViaName(bcf->returnStruct, c);
@@ -460,6 +525,23 @@ structDefinition* getStructType(ASTNode* currentNode, byteCode c, scopeInfo s) {
             }
                 
             
+        }
+    }
+    else if (currentNode->type == AST_IDENTIFIER) {
+        for (int i = 0; i < c.globals->length; i++) {
+            vmVariable* vmv = getArray(c.globals, i);
+            if (strcmp(vmv->name, currentNode->value.nameVal) == 0) {
+
+                return getStructDefViaName(vmv->structType, c);
+            }
+        }
+        // todo: make s.locals into a array*.
+        for (int i = 0; i < s.locals->length; i++) {
+            vmVariable* vmv = List_GetElement(s.locals, i)->data;
+            if (strcmp(vmv->name, currentNode->value.nameVal) == 0) {
+
+                return getStructDefViaName(vmv->structType, c);
+            }
         }
     }
     return NULL;
@@ -503,6 +585,7 @@ void applySpecifiers(ASTNode* cn, vmVariable* vmv) {
         }
     }
 }
+
 // Does the same thing as applySpecifiers() but for structTypes.
 void applySpecifiersStruct(ASTNode* cn, structTypes* st) {
     if (cn->children == NULL) return;
@@ -547,7 +630,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
             }
             // Identifier -> LOAD_GLOBAL n
             for (int i = 0; i < c.globals->length; i++) {
-                char* iName = ((vmVariable*)List_GetElement(c.globals, i)->data)->name;
+                char* iName = ((vmVariable*)getArray(c.globals, i))->name;
                 if (strcmp(iName, name) == 0) {
                     addUnaryInstruction(c, OP_LOAD_GLOBAL, i, chunkIdx);
                     ;
@@ -591,87 +674,60 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
         case AST_OPERATOR: {
             if (currentNode->left != NULL) toBytecode(c, currentNode->left, s, chunkIdx);
             if (currentNode->right != NULL) toBytecode(c, currentNode->right, s, chunkIdx);
-            
-            if (strcmp(currentNode->value.opVal, "+") == 0) {
-                addNullaryInstruction(c, OP_ADD, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "-") == 0) {
-                if (currentNode->left == NULL) addNullaryInstruction(c, OP_NEG, chunkIdx);
-                else addNullaryInstruction(c, OP_SUB, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "#") == 0 ) {
-                if (currentNode->left == NULL) addNullaryInstruction(c, OP_ARRAY_LEN, chunkIdx);
-                else {fatalError(0x20, "Unknown parameter for #", -1);}
-            }
-            else if (strcmp(currentNode->value.opVal, "*") == 0) {
-                addNullaryInstruction(c, OP_MUL, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "/") == 0) {
-                addNullaryInstruction(c, OP_DIV, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, ">") == 0) {
-                addNullaryInstruction(c, OP_GTHAN, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "<") == 0) {
-                addNullaryInstruction(c, OP_LTHAN, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, ">=") == 0) {
-                addNullaryInstruction(c, OP_GEQTHAN, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "<=") == 0) {
-                addNullaryInstruction(c, OP_LEQTHAN, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "==") == 0) {
-                addNullaryInstruction(c, OP_EQUALS, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "||") == 0) {
-                addNullaryInstruction(c, OP_OR, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "&&") == 0) {
-                addNullaryInstruction(c, OP_AND, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "!") == 0) {
-                addNullaryInstruction(c, OP_NOT, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "%") == 0) {
-                addNullaryInstruction(c, OP_MOD, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, ">>") == 0) {
-                addNullaryInstruction(c, OP_RSHIFT, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, ">>") == 0) {
-                addNullaryInstruction(c, OP_LSHIFT, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "|") == 0) {
-                addNullaryInstruction(c, OP_BOR, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "&") == 0) {
-                addNullaryInstruction(c, OP_BAND, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "^") == 0) {
-                addNullaryInstruction(c, OP_BXOR, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "~") == 0) {
-                if (currentNode->left == NULL) addNullaryInstruction(c, OP_BNOT, chunkIdx);
-                else {fatalError(0x20, "Unknown parameter for ~", -1);}
-            }
-            else if (strcmp(currentNode->value.opVal, "**") == 0) {
-                // 2 ** 5 -> pow(2, 5);
-                addUnaryInstruction(c, OP_LOAD_CONST, 0, chunkIdx); // a**b -> !opFunc(a,b,0)
-                addBinaryInstruction(c, OP_CALL, 0, 3, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "//") == 0) {
-                // 2 // 5 -> pow(2, 5);
-                addUnaryInstruction(c, OP_LOAD_CONST, 1, chunkIdx); // a//b -> !opFunc(a,b,1)
-                addBinaryInstruction(c, OP_CALL, 0, 3, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "!=") == 0) {
-                addNullaryInstruction(c, OP_EQUALS, chunkIdx);
-                addNullaryInstruction(c, OP_NOT, chunkIdx);
-            }
-            else if (strcmp(currentNode->value.opVal, "!") == 0) {
-                addNullaryInstruction(c, OP_NOT, chunkIdx);
-            }
+                structDefinition* left = currentNode->left == NULL ? NULL : getStructType(currentNode->left, c, s);
+                structDefinition* right = currentNode->right == NULL ? NULL : getStructType(currentNode->right, c, s);
+
+                if (left == NULL && right == NULL) {
+                    if (strcmp(currentNode->value.opVal, "+") == 0) addNullaryInstruction(c, OP_ADD, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "-") == 0 && currentNode->left != NULL) addNullaryInstruction(c, OP_SUB, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "-") == 0 && currentNode->left == NULL) addNullaryInstruction(c, OP_NEG, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "#") == 0 ) addNullaryInstruction(c, OP_ARRAY_LEN, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "*") == 0) addNullaryInstruction(c, OP_MUL, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "/") == 0) addNullaryInstruction(c, OP_DIV, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, ">") == 0) addNullaryInstruction(c, OP_GTHAN, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "<") == 0) addNullaryInstruction(c, OP_LTHAN, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, ">=") == 0) addNullaryInstruction(c, OP_GEQTHAN, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "<=") == 0) addNullaryInstruction(c, OP_LEQTHAN, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "==") == 0) addNullaryInstruction(c, OP_EQUALS, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "||") == 0) addNullaryInstruction(c, OP_OR, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "&&") == 0) addNullaryInstruction(c, OP_AND, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "!") == 0) addNullaryInstruction(c, OP_NOT, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "%") == 0) addNullaryInstruction(c, OP_MOD, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, ">>") == 0) addNullaryInstruction(c, OP_RSHIFT, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, ">>") == 0) addNullaryInstruction(c, OP_LSHIFT, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "|") == 0) addNullaryInstruction(c, OP_BOR, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "&") == 0) addNullaryInstruction(c, OP_BAND, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "^") == 0) addNullaryInstruction(c, OP_BXOR, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "~") == 0) addNullaryInstruction(c, OP_BNOT, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "!") == 0) addNullaryInstruction(c, OP_NOT, chunkIdx);
+                    else if (strcmp(currentNode->value.opVal, "**") == 0) {
+                        // 2 ** 5 -> pow(2, 5);
+                        addUnaryInstruction(c, OP_LOAD_CONST, 0, chunkIdx); // a**b -> !opFunc(a,b,0)
+                        addBinaryInstruction(c, OP_CALL, 0, 3, chunkIdx);
+                    }
+                    else if (strcmp(currentNode->value.opVal, "//") == 0) {
+                        // 2 // 5 -> pow(2, 5);
+                        addUnaryInstruction(c, OP_LOAD_CONST, 1, chunkIdx); // a//b -> !opFunc(a,b,1)
+                        addBinaryInstruction(c, OP_CALL, 0, 3, chunkIdx);
+                    }
+                    else if (strcmp(currentNode->value.opVal, "!=") == 0) {
+                        addNullaryInstruction(c, OP_EQUALS, chunkIdx);
+                        addNullaryInstruction(c, OP_NOT, chunkIdx);
+                    }    
+                }
+                else {
+                    structDefinition* toCall = left == NULL ? right : left;
+                    // go get the appropriate function for it.
+                    char* toFind = opToFunc(currentNode->value.opVal, currentNode->left == NULL);
+                    char buffer[50]; sprintf(buffer, "%s_%s", toCall->name, toFind);
+                    for (int i = 0; i < c.functionIdentifiers->length; i++) {
+                        bcFunction* bcf = getArray(c.functionIdentifiers, i);
+                        if (strcmp(bcf->name, buffer) == 0) {
+                            addBinaryInstruction(c, OP_CALL, i, 1+(int)(currentNode->left != NULL), chunkIdx);
+                            return;
+                        }
+                    }
+                }
             break;
         }
         /*
@@ -683,19 +739,19 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
             if (chunkIdx != 0) {fatalError(0x1F, "Structs cannot be declared within a function.", -1);}
             structDefinition* sd = malloc(sizeof(structDefinition));
             *sd = (structDefinition){
-                .fields = malloc(sizeof(List)),
-                .fieldTypes = malloc(sizeof(List)),
+                .fields = mallocArray(0),
+                .fieldTypes = mallocArray(0),
                 .name = currentNode->value.nameVal
             };
-            *sd->fields = NewList();
-            *sd->fieldTypes = NewList();
-            if (currentNode->children == NULL) {List_AppendElement(c.structDefs, sd); return;}
-            if (currentNode->children->length == 0) {List_AppendElement(c.structDefs, sd); return;}
+            if (currentNode->children == NULL) {appendArray(c.structDefs, sd); return;}
+            if (currentNode->children->length == 0) {appendArray(c.structDefs, sd); return;}
 
             for (int i = 0; i < currentNode->children->length; i++) {
                 ASTNode* node = (ASTNode*)List_GetElement(currentNode->children, i)->data;
                 if (node->type == AST_VARDECLARATION) {
-                    List_AppendElement(sd->fields, node->right->value.nameVal);
+                    structField* sf = malloc(sizeof(structField));
+                    sf->name = node->right->value.nameVal;
+                    appendArray(sd->fields, sf);
                     structTypes* st = malloc(sizeof(structTypes));
                     *st = (structTypes){
                         .isPDT = (node->left->type == AST_DATATYPE),
@@ -705,10 +761,10 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     applySpecifiersStruct(node->left, st);
                     if (st->isPDT) st->type.pdtType = node->left->value.numberVal;
                     else st->type.name = node->left->value.nameVal;
-                    List_AppendElement(sd->fieldTypes, st);
+                    appendArray(sd->fieldTypes, st);
                 }
             }
-            List_AppendElement(c.structDefs, sd);
+            appendArray(c.structDefs, sd);
             for (int i = 0; i < currentNode->children->length; i++) {
                 ASTNode* node = (ASTNode*)List_GetElement(currentNode->children, i)->data;
                 if (node->type == AST_FUNCDEL) {
@@ -766,8 +822,8 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                 structDefinition* sd = getStructDefViaName(il.ptr->structType, c);
                 
                 for (int i = 0; i < sd->fields->length; i++) {
-                    char* fieldName = (char*)List_GetElement(sd->fields, i)->data;
-                    structTypes* st = (structTypes*)List_GetElement(sd->fieldTypes, i)->data;
+                    char* fieldName = ((structField*)getArray(sd->fields, i))->name;
+                    structTypes* st = (structTypes*)getArray(sd->fieldTypes, i);
                     if (strcmp(fieldName, currentNode->right->value.nameVal) == 0) {
                         if (il.isGlobal) addUnaryInstruction(c, OP_LOAD_GLOBAL, il.index, chunkIdx);
                         else addUnaryInstruction(c, OP_LOAD_LOCAL, il.index, chunkIdx);
@@ -786,8 +842,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                 }
                 if (currentNode->right->type != AST_IDENTIFIER) {fatalError(0x21, "Unknown struct access", -1);}
                 for (int i = 0; i < sd->fields->length; i++) {
-                    char* fieldName = (char*)List_GetElement(sd->fields, i)->data;
-                    typedValue* fieldType = (typedValue*)List_GetElement(sd->fieldTypes, i)->data;
+                    char* fieldName = ((structField*)getArray(sd->fields, i))->name;
                     if (strcmp(fieldName, currentNode->right->value.nameVal ) == 0) {
                         addUnaryInstruction(c, OP_GET_FIELD, i, chunkIdx);
                         return;
@@ -804,8 +859,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     fatalError(0x22, "Invalid array access", -1);
                 }
                 for (int i = 0; i < sd->fields->length; i++) {
-                    char* fieldName = (char*)List_GetElement(sd->fields, i)->data;
-                    typedValue* fieldType = (typedValue*)List_GetElement(sd->fieldTypes, i)->data;
+                    char* fieldName = ((structField*)getArray(sd->fields, i))->name;
                     if (strcmp(fieldName, currentNode->right->value.nameVal ) == 0) {
                         addUnaryInstruction(c, OP_GET_FIELD, i, chunkIdx);
                         ;
@@ -821,8 +875,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     fatalError(0x23, "Invalid function call", -1);
                 }
                 for (int i = 0; i < sd->fields->length; i++) {
-                    char* fieldName = (char*)List_GetElement(sd->fields, i)->data;
-                    typedValue* fieldType = (typedValue*)List_GetElement(sd->fieldTypes, i)->data;
+                    char* fieldName = ((structField*)getArray(sd->fields, i))->name;
                     if (strcmp(fieldName, currentNode->right->value.nameVal ) == 0) {
                         addUnaryInstruction(c, OP_GET_FIELD, i, chunkIdx);
                         ;
@@ -846,7 +899,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
             if (currentNode->children == NULL) return;
             if (currentNode->children->length == 0) {
                 for (int i = 0; i < c.constants->length; i++) {
-                    typedValue* tv = List_GetElement(c.constants, i)->data;
+                    typedValue* tv = getArray(c.constants, i);
                     if (tv->valueType == TYPE_ARRAY) {if (tv->value.av.len == 0) {addUnaryInstruction(c, OP_LOAD_CONST, i, chunkIdx); ; return;}}
                 }
                 typedValue* toApp = malloc(sizeof(typedValue));
@@ -859,7 +912,8 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                         .len = 0
                     }
                 };
-                List_AppendElement(c.constants, toApp);
+                appendArray(c.constants, toApp);
+                addUnaryInstruction(c, OP_LOAD_CONST, c.constants->length-1, chunkIdx);
                 return;
             };
             // If it already has an identifier, then it's not in constants.
@@ -875,7 +929,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
             }
             if (!hasIdentifiers) {
                 for (int i = 0; i < c.constants->length; i++) {
-                    typedValue* tv = (typedValue*)List_GetElement(c.constants, i)->data;
+                    typedValue* tv = getArray(c.constants, i);
                     if (tv->valueType == TYPE_ARRAY) {
                         if (tv->value.av.arrayType != AT_UNKNOWN) {
                             if (tv->value.av.len != currentNode->children->length) continue;
@@ -941,7 +995,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     .ptr = NULL,
                 };
                 
-                List_AppendElement(c.constants, toStore);
+                appendArray(c.constants, toStore);
                 addUnaryInstruction(c, OP_BUILD_ARRAY, currentNode->children->length, chunkIdx);
             }
             else {
@@ -956,7 +1010,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
         */
         case AST_STRING: {
             for (int i = 0; i < c.constants->length; i++) {
-                typedValue* tv = (typedValue*)List_GetElement(c.constants, i)->data;
+                typedValue* tv = (typedValue*)getArray(c.constants, i);
                 if (tv->valueType == TYPE_ARRAY) {
                     if (tv->value.av.arrayType == AT_CHARARR) {
                         num* converted = malloc(sizeof(num)*tv->value.av.len);
@@ -1002,8 +1056,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                 (tv->value.av.data)[i] = toApp;
             }
             addUnaryInstruction(c, OP_LOAD_CONST, c.constants->length, chunkIdx);
-            List_AppendElement(c.constants, tv);
-            ;
+            appendArray(c.constants, tv);
             break;
         }
         /*
@@ -1012,7 +1065,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
         case AST_NUMBER: {
             typedValue val = (typedValue){.valueType = TYPE_NUM, .value.numberValue = currentNode->value.numVal};
             for (int i = 0; i < c.constants->length; i++) {
-                typedValue* tv = (typedValue*)List_GetElement(c.constants, i)->data;
+                typedValue* tv = (typedValue*)getArray(c.constants, i);
                 if (tv->valueType == val.valueType && val.valueType == TYPE_NUM) {
                     if (tv->value.numberValue.type != val.value.numberValue.type) continue;
                     if (cmpNum(val.value.numberValue, tv->value.numberValue) == 0) {
@@ -1027,7 +1080,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                 .value.numberValue = currentNode->value.numVal,
                 .ptr = NULL,
             };
-            List_AppendElement(c.constants, toAppend);
+            appendArray(c.constants, toAppend);
             addUnaryInstruction(c, OP_LOAD_CONST, c.constants->length-1, chunkIdx);        
             ;
             break;    
@@ -1074,7 +1127,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                 }
             }
             for (int i = 0; i < c.globals->length; i++) {
-                char* n = ((vmVariable*)List_GetElement(c.globals, i)->data)->name;
+                char* n = ((vmVariable*)getArray(c.globals, i))->name;
                 if (strcmp(n, name) == 0) {
                     fatalError(0x26, "Variable already exists (Check local scope).", -1);
                 }
@@ -1092,7 +1145,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                         .isArray = (currentNode->left->left == NULL) ? false : (currentNode->left->type == AST_ARRAYASSIGNMENT)
                     };
                     applySpecifiers(currentNode->left, toApp);
-                    if (chunkIdx == 0) {List_AppendElement(c.globals, toApp); addUnaryInstruction(c, OP_STORE_GLOBAL, c.globals->length-1, chunkIdx);}
+                    if (chunkIdx == 0) {appendArray(c.globals, toApp); addUnaryInstruction(c, OP_STORE_GLOBAL, c.globals->length-1, chunkIdx);}
                     else {List_AppendElement(s.locals, toApp); addUnaryInstruction(c, OP_STORE_LOCAL, s.locals->length-1, chunkIdx);}
                 }
             }
@@ -1101,7 +1154,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                 int structIdx = -1;
                 // get struct definition:
                 for (int i = 0; i < c.structDefs->length; i++) {
-                    structDefinition* sd = (structDefinition*)List_GetElement(c.structDefs, i)->data;
+                    structDefinition* sd = (structDefinition*)getArray(c.structDefs, i);
                     if (strcmp(sd->name, currentNode->left->value.nameVal) == 0) {
                         varStruct = sd;
                         structIdx = i;
@@ -1111,7 +1164,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                 // If it's null, then this is an invalid var declaration.
                 if (varStruct == NULL) {
                     for (int i = 0; i < c.structDefs->length && isDebug; i++) {
-                        printf("\n: %s %s", ((structDefinition*)List_GetElement(c.structDefs, i)->data)->name, currentNode->left->value.nameVal);
+                        printf("\n: %s %s", ((structDefinition*)getArray(c.structDefs, i))->name, currentNode->left->value.nameVal);
                     }
                     fatalError(0x27, "Cannot find struct", -1);
                 }
@@ -1135,7 +1188,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                             char* constructorName = malloc((2*strlen(varStruct->name)) + 2);
                             sprintf(constructorName, "%s_%s", varStruct->name, varStruct->name);
                             for (int i = 0; i < c.functionIdentifiers->length; i++) {
-                                bcFunction* bcc = (bcFunction*)List_GetElement(c.functionIdentifiers, i)->data;
+                                bcFunction* bcc = (bcFunction*)getArray(c.functionIdentifiers, i);
                                 char* bcName = bcc->name;
                                 if (strcmp(bcName, constructorName) == 0) {
                                     addNullaryInstruction(c, OP_CLEAR_STACK, chunkIdx);
@@ -1149,12 +1202,12 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                             vmVariable* toApp = malloc(sizeof(vmVariable));
                             *toApp = (vmVariable){
                                 .name = cpy,
-                                .structType = currentNode->left->left == NULL ? (char*)((structDefinition*)List_GetElement(c.structDefs, structIdx)->data)->name : strdup("array"),
+                                .structType = currentNode->left->left == NULL ? (char*)((structDefinition*)getArray(c.structDefs, structIdx))->name : strdup("array"),
                                 .t = TYPE_NULL,
                                 .isArray = currentNode->left->left == NULL ? false : currentNode->left->type == AST_ARRAYASSIGNMENT
                             };
                             applySpecifiers(currentNode->left, toApp);
-                            if (chunkIdx == 0) {List_AppendElement(c.globals, toApp); addUnaryInstruction(c, OP_STORE_GLOBAL, c.globals->length-1, chunkIdx);}
+                            if (chunkIdx == 0) {appendArray(c.globals, toApp); addUnaryInstruction(c, OP_STORE_GLOBAL, c.globals->length-1, chunkIdx);}
                             else {List_AppendElement(s.locals, toApp); addUnaryInstruction(c, OP_STORE_LOCAL, s.locals->length-1, chunkIdx);}
                             
                             // constructor
@@ -1172,7 +1225,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                                 .isArray = currentNode->left->left == NULL ? false : currentNode->left->type == AST_ARRAYASSIGNMENT
                             };
                             applySpecifiers(currentNode->left, toApp);
-                            if (chunkIdx == 0) {List_AppendElement(c.globals, toApp); addUnaryInstruction(c, OP_STORE_GLOBAL, c.globals->length-1, chunkIdx);}
+                            if (chunkIdx == 0) {appendArray(c.globals, toApp); addUnaryInstruction(c, OP_STORE_GLOBAL, c.globals->length-1, chunkIdx);}
                             else {List_AppendElement(s.locals, toApp); addUnaryInstruction(c, OP_STORE_LOCAL, s.locals->length-1, chunkIdx);}
                             ;
                             return;
@@ -1189,7 +1242,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                             .isArray = currentNode->left->left == NULL ? false : currentNode->left->type == AST_ARRAYASSIGNMENT
                         };
                         applySpecifiers(currentNode->left, toApp);
-                        if (chunkIdx == 0) {List_AppendElement(c.globals, toApp); addUnaryInstruction(c, OP_STORE_GLOBAL, c.globals->length-1, chunkIdx);}
+                        if (chunkIdx == 0) {appendArray(c.globals, toApp); addUnaryInstruction(c, OP_STORE_GLOBAL, c.globals->length-1, chunkIdx);}
                         else {List_AppendElement(s.locals, toApp); addUnaryInstruction(c, OP_STORE_LOCAL, s.locals->length-1, chunkIdx);}
                         ;
                         return;
@@ -1206,7 +1259,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                         .isArray = true
                     };
                     applySpecifiers(currentNode->left, toApp);
-                    if (chunkIdx == 0) {List_AppendElement(c.globals, toApp); addUnaryInstruction(c, OP_STORE_GLOBAL, c.globals->length-1, chunkIdx);}
+                    if (chunkIdx == 0) {appendArray(c.globals, toApp); addUnaryInstruction(c, OP_STORE_GLOBAL, c.globals->length-1, chunkIdx);}
                     else {List_AppendElement(s.locals, toApp); addUnaryInstruction(c, OP_STORE_LOCAL, s.locals->length-1, chunkIdx);}
                     ;
                     return;
@@ -1226,7 +1279,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     .isArray = true,
                 };
                 applySpecifiers(currentNode->left, toApp);
-                if (chunkIdx == 0) {List_AppendElement(c.globals, toApp); addUnaryInstruction(c, OP_STORE_GLOBAL, c.globals->length-1, chunkIdx);}
+                if (chunkIdx == 0) {appendArray(c.globals, toApp); addUnaryInstruction(c, OP_STORE_GLOBAL, c.globals->length-1, chunkIdx);}
                 else {List_AppendElement(s.locals, toApp); addUnaryInstruction(c, OP_STORE_LOCAL, s.locals->length-1, chunkIdx);}
                 
             }
@@ -1253,7 +1306,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     }
                 }
                 for (int i = 0; i < c.globals->length; i++) {
-                    vmVariable* vmv = ((vmVariable*)List_GetElement(c.globals, i)->data);
+                    vmVariable* vmv = ((vmVariable*)getArray(c.globals, i));
                     if (strcmp(currentNode->right->value.nameVal, vmv->name) == 0 ) {
                         if (vmv->isConst) fatalError(0x7, "", -1);
                         addUnaryInstruction(c, OP_STORE_GLOBAL, i, chunkIdx);
@@ -1287,8 +1340,8 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     }
                     if (idIdx == -1) {
                         for (int i = 0; i < c.globals->length; i++) {
-                            if (strcmp(identifierName, ((vmVariable*)List_GetElement(c.globals, i)->data)->name) == 0 ) {
-                                structName = ((vmVariable*)List_GetElement(c.globals, i)->data)->structType;
+                            if (strcmp(identifierName, ((vmVariable*)getArray(c.globals, i))->name) == 0 ) {
+                                structName = ((vmVariable*)getArray(c.globals, i))->structType;
                                 idOrigin = 2;
                                 idIdx = i;
                                 break;
@@ -1299,8 +1352,8 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     // check if n.x is a valid access.
                     structDefinition* sd = NULL;
                     for (int i = 0; i < c.structDefs->length; i++) {
-                        if (strcmp(((structDefinition*)List_GetElement(c.structDefs, i)->data)->name, structName ) == 0) {
-                            sd = (structDefinition*)List_GetElement(c.structDefs, i)->data;
+                        if (strcmp(((structDefinition*)getArray(c.structDefs, i))->name, structName ) == 0) {
+                            sd = (structDefinition*)getArray(c.structDefs, i);
                             break;
                         }
                     }
@@ -1308,10 +1361,10 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                         fatalError(0x2B, "Invalid struct name", -1);
                     }
                     for (int i = 0; i < sd->fields->length; i++) {
-                        char* fieldName = (char*)List_GetElement(sd->fields, i)->data;
+                        char* fieldName = ((structField*)getArray(sd->fields, i))->name;
                         char* nameV = currentNode->right->right->value.nameVal;
                         if (strcmp(fieldName, nameV) == 0) {
-                            structTypes* st = List_GetElement(sd->fieldTypes, i)->data;
+                            structTypes* st = getArray(sd->fieldTypes, i);
                             if (st->isConst) fatalError(0x7, "", -1);
                             if (idOrigin == 1) addUnaryInstruction(c, OP_LOAD_LOCAL, idIdx, chunkIdx);
                             if (idOrigin == 2) addUnaryInstruction(c, OP_LOAD_GLOBAL, idIdx, chunkIdx);
@@ -1330,7 +1383,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                         fatalError(0x2C, "Invalid struct assignment", -1);
                     }
                     for (int i = 0; i < sd->fields->length; i++) {
-                        char* fieldName = (char*)List_GetElement(sd->fields, i)->data;
+                        char* fieldName = ((structField*)getArray(sd->fields, i))->name;
                         if (strcmp(fieldName, currentNode->right->right->value.nameVal) == 0) {
                             toBytecode(c, (ASTNode*)List_GetElement(currentNode->children, 0)->data, s, chunkIdx);
                             addUnaryInstruction(c, OP_SET_FIELD, i, chunkIdx);
@@ -1363,7 +1416,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
             i->code = OP_JUMP_IF_FALSE;
             
             toBytecode(c, currentNode->left, s, chunkIdx);
-            List_AppendElement(getInstructions(c, chunkIdx), i);
+            appendArray(getInstructions(c, chunkIdx), i);
             for (int i = 0; i < currentNode->right->children->length; i++) {
                 toBytecode(c, (ASTNode*)List_GetElement(currentNode->right->children, i)->data, s, chunkIdx);
             }
@@ -1406,7 +1459,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
            for (int i = 0; i < currentNode->children->length; i++) {
             ASTNode* n = (ASTNode*)List_GetElement(currentNode->children, i)->data;
             toBytecode(c, n, s, chunkIdx);
-            List_AppendElement(getInstructions(c, chunkIdx), &(toModify[i]) );
+            appendArray(getInstructions(c, chunkIdx), &(toModify[i]) );
            }
            for (int i = 0; i < currentNode->children->length; i++) {
             *(toModify[i].args) = getInstructions(c, chunkIdx)->length; // JMP n
@@ -1422,7 +1475,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                 .code = OP_JUMP
             };
             List_AppendElement(s.breakStatements, jmp);
-            List_AppendElement(getInstructions(c, chunkIdx), jmp);
+            appendArray(getInstructions(c, chunkIdx), jmp);
             break;
         }
         // continueTarget was given in the scopeInfo, so this adds an OP_JUMP whose argument is continueTarget.
@@ -1458,7 +1511,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                 .code = OP_JUMP_IF_FALSE
             };
             List_AppendElement(&BS, jmpFalse);
-            List_AppendElement(getInstructions(c, chunkIdx), jmpFalse);
+            appendArray(getInstructions(c, chunkIdx), jmpFalse);
             for (int i = 0; i < currentNode->right->children->length; i++) {
                 ASTNode* ln = (ASTNode*)List_GetElement(currentNode->right->children, i)->data;
                 toBytecode(c, ln, (scopeInfo){&BS,0, s.locals}, chunkIdx);
@@ -1491,7 +1544,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                 .code = OP_JUMP
             };
             int loopjmp = getInstructions(c, chunkIdx)->length+1;
-            List_AppendElement(getInstructions(c, chunkIdx), n); // JMP X (skip condition checking)
+            appendArray(getInstructions(c, chunkIdx), n); // JMP X (skip condition checking)
             toBytecode(c, (ASTNode*)List_GetElement(currentNode->children, 2)->data, (scopeInfo){&BS,0, s.locals}, chunkIdx); // Var modification
 
             toBytecode(c, List_GetElement(currentNode->children, 1)->data, s, chunkIdx);
@@ -1501,7 +1554,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                 .args = malloc(sizeof(int)),
                 .code = OP_JUMP_IF_FALSE
             };
-            List_AppendElement(getInstructions(c, chunkIdx), jmp0);
+            appendArray(getInstructions(c, chunkIdx), jmp0);
             n->args[0] = getInstructions(c, chunkIdx)->length; // Set jmp to correct part
             for (int i = 3; i < currentNode->children->length; i++) {
                 toBytecode(c, (ASTNode*)List_GetElement(currentNode->children, i)->data, (scopeInfo){&BS,n->args[0], s.locals}, chunkIdx); // Block
@@ -1533,14 +1586,14 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
             int newChunkIdx = 0;
             if (strcmp(currentNode->left->value.nameVal, "main") == 0) {
                 for (int i = 0; i < c.chunks->length; i++) {
-                    if (strcmp(((chunk*)List_GetElement(c.chunks, i)->data)->name, "main") == 0) {
+                    if (strcmp(((chunk*)getArray(c.chunks, i))->name, "main") == 0) {
                         newChunkIdx = i;
                     }
                 }
             }
             else {
                 for (int i = 2; i < c.chunks->length; i++) {
-                    if (strcmp(((chunk*)List_GetElement(c.chunks, i)->data)->name, currentNode->left->value.nameVal) == 0) {
+                    if (strcmp(((chunk*)getArray(c.chunks, i))->name, currentNode->left->value.nameVal) == 0) {
                         newChunkIdx = i;
                     }
                 }
@@ -1567,12 +1620,11 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     if (returnName != NULL) cpy->returnStruct = strdup(returnName);
                     else cpy->returnStruct = NULL;
                     if (currentNode->right->left != NULL) returnName = "array";
-                    List_AppendElement(c.functionIdentifiers, cpy);
+                    appendArray(c.functionIdentifiers, cpy);
                     newChunkIdx = c.chunks->length;
                     chunk* toAdd = malloc(sizeof(chunk));
-                    *toAdd = (chunk){.instructions = malloc(sizeof(List)), .name = cpy->name};
-                    *toAdd->instructions = NewList();
-                    List_AppendElement(c.chunks, toAdd);
+                    *toAdd = (chunk){.instructions = mallocArray(0), .name = cpy->name};
+                    appendArray(c.chunks, toAdd);
                 }
             }
             ASTNode* block = (ASTNode*)List_GetElement(currentNode->children, -1)->data;
@@ -1647,7 +1699,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     toBytecode(c, toSwitch, s, chunkIdx);
                     addNullaryInstruction(c, OP_EQUALS, chunkIdx);
                 }
-                List_AppendElement(((chunk*)List_GetElement(c.chunks, chunkIdx)->data)->instructions, toAppend );
+                appendArray(((chunk*)getArray(c.chunks, chunkIdx))->instructions, toAppend );
                 toBytecode(c, child->right, s, chunkIdx); // block
                 // add jmp statement to jump to after it
                 instruction* jmpInstruction = malloc(sizeof(instruction));
@@ -1656,12 +1708,12 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     .args = malloc(sizeof(int)),
                     .code = OP_JUMP
                 };
-                List_AppendElement(((chunk*)List_GetElement(c.chunks, chunkIdx)->data)->instructions, jmpInstruction);
+                appendArray(((chunk*)getArray(c.chunks, chunkIdx))->instructions, jmpInstruction);
                 List_AppendElement(toJump, jmpInstruction);
-                toAppend->args[0] = ((chunk*)List_GetElement(c.chunks, chunkIdx)->data)->instructions->length;
+                toAppend->args[0] = ((chunk*)getArray(c.chunks, chunkIdx))->instructions->length;
             }
             for (int i = 0; i < toJump->length; i++) {
-                ((instruction*)List_GetElement(toJump, i)->data)->args[0] = ((chunk*)List_GetElement(c.chunks, chunkIdx)->data)->instructions->length;
+                ((instruction*)List_GetElement(toJump, i)->data)->args[0] = ((chunk*)getArray(c.chunks, chunkIdx))->instructions->length;
             }
             freeListKeepData(toJump);
            break;
@@ -1680,7 +1732,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
             
             if (currentNode->left->type == AST_IDENTIFIER) {
                 for (int i = 0; i < c.functionIdentifiers->length; i++) {
-                    bcFunction* bf = (bcFunction*)List_GetElement(c.functionIdentifiers, i)->data;
+                    bcFunction* bf = (bcFunction*)getArray(c.functionIdentifiers, i);
                     structDefinition* sd = isConstructor(bf->name, c);
                     if (strcmp(bf->name, currentNode->left->value.nameVal) == 0) {
                         if (currentNode->children != NULL) {
@@ -1701,7 +1753,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                             if (sd != NULL && currentNode->children->length != bf->argc-1) {fatalError(0x2D, "Unknown assignment error.", -1);}
                             int structIdx = -1;
                             for (int j = 0; j < c.structDefs->length; j++) {
-                                if (strcmp(((structDefinition*)List_GetElement(c.structDefs, j)->data)->name, sd->name) == 0) {structIdx = j; break;}
+                                if (strcmp(((structDefinition*)getArray(c.structDefs, j))->name, sd->name) == 0) {structIdx = j; break;}
                             }
                             addUnaryInstruction(c, OP_NEW_STRUCT, structIdx, chunkIdx);
                             if (currentNode->children != NULL) {
@@ -1739,7 +1791,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     char* actualName = malloc(strlen(functionName)+strlen(sd->name)+2);
                     sprintf(actualName, "%s_%s", sd->name, functionName);
                     for (int i = 0; i < c.functionIdentifiers->length; i++) {
-                        bcFunction* bf = (bcFunction*)List_GetElement(c.functionIdentifiers, i)->data;
+                        bcFunction* bf = (bcFunction*)getArray(c.functionIdentifiers, i);
                         if (strcmp(actualName, bf->name) == 0) {
                             addBinaryInstruction(c, OP_CALL, i,(sd->name != NULL)+currentNode->children->length, chunkIdx);
                             free(actualName);
@@ -1758,7 +1810,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     char* actualName = malloc(strlen(sd->name)+strlen(functionName)+2);
                     sprintf(actualName, "%s_%s", sd->name, functionName);
                     for (int i = 0; i < c.functionIdentifiers->length; i++) {
-                        bcFunction* bf = (bcFunction*)List_GetElement(c.functionIdentifiers, i)->data;
+                        bcFunction* bf = (bcFunction*)getArray(c.functionIdentifiers, i);
                         if (strcmp(actualName, bf->name) == 0) {
                             
                             if (il.isGlobal) addUnaryInstruction(c, OP_LOAD_GLOBAL, il.index, chunkIdx);
@@ -1790,12 +1842,38 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                     char tempName[500];
                     sprintf(tempName, "%s_%s", sd->name, currentNode->left->right->value.nameVal);
                     for (int i = 0; i < c.functionIdentifiers->length; i++) {
-                        bcFunction* funcName = List_GetElement(c.functionIdentifiers, i)->data;
+                        bcFunction* funcName = getArray(c.functionIdentifiers, i);
                         if (strcmp(funcName->name, tempName) == 0) {
                             addBinaryInstruction(c, OP_CALL, i,currentNode->children == NULL ? 1 : 1+currentNode->children->length, chunkIdx);
                             ;
                             return;
                         }
+                    }
+                }
+                else if (currentNode->left->left->type == AST_ARRAYACCESS) {
+                    toBytecode(c, currentNode->left->left, s, chunkIdx);
+                    structDefinition* sd = getStructType(currentNode->left->left, c, s);
+                    char tempName[500];
+                    sprintf(tempName, "%s_%s", sd->name, currentNode->left->right->value.nameVal);
+                    for (int i = 0; i < c.functionIdentifiers->length; i++) {
+                        bcFunction* funcName = getArray(c.functionIdentifiers, i);
+                        if (strcmp(funcName->name, tempName) == 0) {
+                            addBinaryInstruction(c, OP_CALL, i,currentNode->children == NULL ? 1 : 1+currentNode->children->length, chunkIdx);
+                            ;
+                            return;
+                        }
+                    }
+                }
+            }
+            else if (currentNode->left->type == AST_ARRAYACCESS) {
+                toBytecode(c, currentNode->left, s, chunkIdx);
+                structDefinition* sd = getStructType(currentNode->left, c, s);
+                char buffer[500]; sprintf(buffer, "%s_%s", sd->name, currentNode->right->value.anyVal);
+                for (int i = 0; i < c.functionIdentifiers->length; i++) {
+                    bcFunction* bcf = getArray(c.functionIdentifiers, i);
+                    if (strcmp(bcf->name, currentNode->right->value.anyVal) == 0) {
+                        addBinaryInstruction(c, OP_CALL, i, currentNode->children->length, chunkIdx);
+                        return;
                     }
                 }
             }
@@ -1850,7 +1928,7 @@ bcFunction* getFunc(byteCode c, int idx) {
     bool premainReached = false;
     int offsetIdx = idx;
     for (int i = 0; i < c.functionIdentifiers->length; i++) {
-        bcFunction* bcf = (bcFunction*)List_GetElement(c.functionIdentifiers, i)->data;
+        bcFunction* bcf = (bcFunction*)getArray(c.functionIdentifiers, i);
         if (bcf->name == NULL) {
             offsetIdx = idx+i;
             break;
@@ -1860,19 +1938,19 @@ bcFunction* getFunc(byteCode c, int idx) {
             break;
         }
     }
-    return ((bcFunction*)List_GetElement(c.functionIdentifiers, offsetIdx)->data);
+    return ((bcFunction*)getArray(c.functionIdentifiers, offsetIdx));
 }
 // Prints bytecode
 void printBytecode(byteCode c, bool numsOnly, bool numberInstructions) {
 
     printf("\nGLOBAL TABLE:\n");
     for (int i = 0; i < c.globals->length; i++) {
-        vmVariable vmv = *(vmVariable*)List_GetElement(c.globals, i)->data;
-        printf(" %d | %s %s\n", i, vmv.structType == NULL ? "" : vmv.structType, vmv.name);
+        vmVariable* vmv = (vmVariable*)getArray(c.globals, i);;
+        printf(" %d | %s %s\n", i, vmv->t != TYPE_STRUCT ? "" : vmv->structType, vmv->name);
     }
     printf("\nCONSTANT TABLE:\n");
     for (int i = 0; i < c.constants->length; i++) {
-        typedValue* tv = (typedValue*)List_GetElement(c.constants, i)->data;
+        typedValue* tv = (typedValue*)getArray(c.constants, i);
         if (tv->valueType == TYPE_NUM) {
             char* toPrint = malloc(1000);
             sprintfNum(tv->value.numberValue, toPrint, true);
@@ -1909,11 +1987,11 @@ void printBytecode(byteCode c, bool numsOnly, bool numberInstructions) {
     }
     printf("STRUCT DEFINITIONS:\n");
     for (int i = 0; i < c.structDefs->length; i++) {
-        structDefinition* sd = List_GetElement(c.structDefs, i)->data;
+        structDefinition* sd = getArray(c.structDefs, i);
         printf(" STRUCT %s:\n", sd->name);
         for (int j = 0; j < sd->fields->length; j++) {
-            char* fieldName = (char*)List_GetElement(sd->fields, j)->data;
-            structTypes* st = (structTypes*)List_GetElement(sd->fieldTypes, j)->data;
+            char* fieldName = ((structField*)getArray(sd->fields, j))->name;
+            structTypes* st = (structTypes*)getArray(sd->fieldTypes, j);
             if (st->isPDT) printf("  %d. %s : %d%s\n", j, fieldName, st->type.pdtType, st->isArray ? "[]" : "");
             else printf("  %d. %s : %s%s\n", j, fieldName, st->type.name, st->isArray ? "[]" : "" );
         }
@@ -1922,7 +2000,7 @@ void printBytecode(byteCode c, bool numsOnly, bool numberInstructions) {
     for (int chunkIdx = 0; chunkIdx < c.chunks->length; chunkIdx++) {
         printf("\n %d -> %s Argc=%d:", chunkIdx, getFunc(c, chunkIdx)->name, getFunc(c, chunkIdx)->argc);
         for (int i = 0; i < getInstructions(c, chunkIdx)->length; i++) {
-            instruction j = *(instruction*)List_GetElement(getInstructions(c, chunkIdx), i)->data;
+            instruction j = *(instruction*)getArray(getInstructions(c, chunkIdx), i);
             if (numberInstructions) printf("\n  %d. ", i);
             else printf("\n  ");
             if (!numsOnly) printf("%s", opToStr(j.code));
@@ -1947,12 +2025,10 @@ bool hasImport(List* imports, char* name) {
 structDefinition* newDef(char* name) {
     structDefinition* toReturn = malloc(sizeof(structDefinition));
     *toReturn = (structDefinition){
-        .fields = malloc(sizeof(List)),
-        .fieldTypes = malloc(sizeof(List)),
+        .fields = mallocArray(0),
+        .fieldTypes = mallocArray(0),
         .name = strdup(name)
     };
-    *toReturn->fields = NewList();
-    *toReturn->fieldTypes = NewList();
     return toReturn;
 }
 // Takes a file path, and inserts the parsed tree into toAppend.
@@ -1978,11 +2054,11 @@ void initStructs(ASTNode* toAppend, byteCode* c, List* imports) {
     if (hasImport(imports, "time")) doDefinitionInsertion(timeDefinitions, toAppend);
     if (hasImport(imports, "io")) doDefinitionInsertion(ioDefinitions, toAppend);
     doDefinitionInsertion(defaultDefinitions, toAppend);
-    List_AppendElement(c->structDefs, newDef("array"));
-    List_AppendElement(c->structDefs, newDef("string"));
+    appendArray(c->structDefs, newDef("array"));
+    appendArray(c->structDefs, newDef("string"));
 }
 // Appends all functions from bcf into add.
-void getFunctions(List* add, const bcFunction* bcf) {
+void getFunctions(array* add, const bcFunction* bcf) {
     
     for (int i = 0; bcf[i].argc != -1; i++) {
         bcFunction bcfi = bcf[i];
@@ -1993,7 +2069,7 @@ void getFunctions(List* add, const bcFunction* bcf) {
             .isSystem = true,
             .returnStruct = bcfi.returnStruct == NULL ? NULL : strdup(bcfi.returnStruct)
         };
-        List_AppendElement(add, bcc);
+        appendArray(add, bcc);
     }
     return;
 }
@@ -2001,17 +2077,12 @@ void getFunctions(List* add, const bcFunction* bcf) {
 byteCode initBytecode(List* imports) {
     // Allocate stuff
     byteCode c = (byteCode){
-        .constants = malloc(sizeof(List)),
-        .globals = malloc(sizeof(List)),
-        .chunks = malloc(sizeof(List)),
-        .functionIdentifiers = malloc(sizeof(List)),
-        .structDefs = malloc(sizeof(List))
+        .constants = mallocArray(0),
+        .globals = mallocArray(0),
+        .chunks = mallocArray(0),
+        .functionIdentifiers = mallocArray(0),
+        .structDefs = mallocArray(0)
     };
-    *c.constants = NewList();
-    *c.globals = NewList();
-    *c.chunks = NewList();
-    *c.functionIdentifiers = NewList();
-    *c.structDefs = NewList();
     // Adds zero & one for !opFunc(), which is the function that is responsible for doing ** & //
     typedValue* zero = malloc(sizeof(typedValue));
     *zero = (typedValue){
@@ -2025,8 +2096,8 @@ byteCode initBytecode(List* imports) {
         .value.numberValue = (num){.value.iVal = 1, .type = NUM_INT},
         .valueType = TYPE_NUM
     };
-    List_AppendElement(c.constants, zero);
-    List_AppendElement(c.constants, one);
+    appendArray(c.constants, zero);
+    appendArray(c.constants, one);
     // If there's an import, moves the functions from that import into c.functionidentifiers.
     if (isDebug) {
         for (int i = 0; i < imports->length; i++) {
@@ -2043,33 +2114,31 @@ byteCode initBytecode(List* imports) {
     // premain: area where globals & structs are initialized. No other things can happen.
     chunk* premain = malloc(sizeof(chunk));
     *premain = (chunk){
-        .instructions = malloc(sizeof(List)),
+        .instructions = mallocArray(0),
         .name = strdup("premain")
     };
-    *premain->instructions = NewList();
-    List_AppendElement(c.chunks, premain);
+    appendArray(c.chunks, premain);
     bcFunction* premainName = malloc(sizeof(bcFunction));
     *premainName = (bcFunction){
         .argc = 0,
         .name = strdup("premain"),
         .isSystem = false,
     };
-    List_AppendElement(c.functionIdentifiers, premainName);
+    appendArray(c.functionIdentifiers, premainName);
     // main: the entry-point for the vm.
     chunk* main = malloc(sizeof(chunk));
     *main = (chunk){
-        .instructions = malloc(sizeof(List)),
+        .instructions = mallocArray(0),
         .name = strdup("main")
     };
-    *main->instructions = NewList();
-    List_AppendElement(c.chunks, main);
+    appendArray(c.chunks, main);
     bcFunction* mainName = malloc(sizeof(bcFunction));
     *mainName = (bcFunction){
         .argc = 0,
         .name = strdup("main"),
         .isSystem = false
     };
-    List_AppendElement(c.functionIdentifiers, mainName);
+    appendArray(c.functionIdentifiers, mainName);
     return c;
 }
 // Reads a text file.

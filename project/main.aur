@@ -1,5 +1,9 @@
 ` This is the file that will open when you run Aurum with isDebug on.
 ` The other files are example programs coded in Aurum.
+import @math;
+import @cplx;
 function main() -> void {
-    print("Hello World!");
+    cplxNum a = cplxNum(3ld,4ld);
+    cplxNum b = cplxNum(3ld, 4ld);
+    print("%o", a**b);
 }

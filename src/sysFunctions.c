@@ -43,7 +43,7 @@ void* srealloc(void* mem, int size) {
 }
 // Converts a number to a typedValue.
 typedValue* numToTV(num n) {
-    typedValue* toReturn = malloc(sizeof(typedValue));
+    typedValue* toReturn = poolAlloc(globalPool);
     *toReturn = (typedValue){
         .ptr = NULL,
         .valueType = TYPE_NUM,
@@ -53,7 +53,7 @@ typedValue* numToTV(num n) {
 }
 // Initializes a new typedValue array.
 typedValue* newTVArray(int len, int type) {
-    typedValue* toReturn = malloc(sizeof(typedValue));
+    typedValue* toReturn = poolAlloc(globalPool);
     *toReturn = (typedValue){
         .ptr = NULL,
         .valueType = TYPE_ARRAY,
@@ -91,7 +91,7 @@ char* strArrToChar(typedValue* tv) {
 }
 // C implementations for scani & scand
 void sScanT(auFunc) {
-    typedValue* arg0 = (typedValue*)List_GetElement(args, 0)->data;
+    typedValue* arg0 = (typedValue*)getArray(args,  0);
     char* s = strdup("");
     if (arg0->valueType == TYPE_ARRAY) {
         free(s);
@@ -112,13 +112,13 @@ void sScanT(auFunc) {
         toAppend = numToTV((num){.type = NUM_LONG, .value.lVal = n});
     }
     freeTypedValue(arg0);
-    List_InsertElement(vms->stack, 0, toAppend);
+    pushArray(vms->stack,toAppend);
     return;
 }
 // C implementation for printInt & printDec
 void sPrintNS(auFunc) {
-    typedValue* arg0 = (typedValue*)List_GetElement(args, 0)->data;
-    typedValue* arg1 = (typedValue*)List_GetElement(args, 1)->data;
+    typedValue* arg0 = (typedValue*)getArray(args,  0);
+    typedValue* arg1 = (typedValue*)getArray(args,  1);
     typedValue* arg2 = NULL;
     char* s = strdup("");
     if (arg0->valueType == TYPE_ARRAY) {
@@ -130,7 +130,7 @@ void sPrintNS(auFunc) {
         printf("\n%s%lld", s, lld);
     }
     else if (strcmp(identifier, "printDec") == 0) {
-        arg2 = (typedValue*)List_GetElement(args, 2)->data;
+        arg2 = (typedValue*)getArray(args,  2);
         if (arg2->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.",-1);};
         long double ld = convertNum(arg1->value.numberValue, NUM_LONGDOUBLE).value.ldVal;
         printf("\n%s%.*Lf", s, arg2->value.numberValue.value.iVal, ld);
@@ -141,7 +141,7 @@ void sPrintNS(auFunc) {
 }
 // C implementation for printString().
 void sPrintS(auFunc) {
-    typedValue* arg0 = (typedValue*)List_GetElement(args, 0)->data;
+    typedValue* arg0 = (typedValue*)getArray(args,  0);
     char* s = strdup("");
     if (arg0->valueType == TYPE_ARRAY) {
         free(s);
@@ -154,12 +154,12 @@ void sPrintS(auFunc) {
 }
 // C implementation for strToInt() and strToDec().
 void sConvertNum(auFunc) {
-    typedValue* arg0 = (typedValue*)List_GetElement(args, 0)->data;
+    typedValue* arg0 = (typedValue*)getArray(args,  0);
     if (arg0->valueType != TYPE_ARRAY) {
         fatalError(0x30, "Invalid input into a system function.",-1);
     }
     char* s = strArrToChar(arg0);
-    typedValue* toReturn = malloc(sizeof(typedValue));
+    typedValue* toReturn = poolAlloc(globalPool);
     int type = strcmp(identifier, "strToInt") == 0 ? NUM_LONG : NUM_LONGDOUBLE;
     *toReturn = (typedValue){
         .ptr = NULL,
@@ -176,12 +176,12 @@ void sConvertNum(auFunc) {
     }
     free(s);
     freeTypedValue(arg0);
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
 }
 // C implementation for scaleInt
 void sScaleInt(auFunc) {
-    typedValue* arg0 = (typedValue*)List_GetElement(args, 0)->data;
-    typedValue* arg1 = (typedValue*)List_GetElement(args, 1)->data;
+    typedValue* arg0 = (typedValue*)getArray(args,  0);
+    typedValue* arg1 = (typedValue*)getArray(args,  1);
     if (arg1->valueType != TYPE_NUM || arg0->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.",-1);}
     
     if (arg1->value.numberValue.type >= NUM_FLOAT || arg0->value.numberValue.type >= NUM_FLOAT) {fatalError(0x30, "Invalid input into a system function.",-1);}
@@ -201,7 +201,7 @@ void sScaleInt(auFunc) {
         case -64LL: {actualType = NUM_ULONG; break;}
     }
     if (actualType == -NUM_FLOAT) {fatalError(0x30, "Invalid input into a system function.",-1);}
-    typedValue* toReturn = malloc(sizeof(typedValue));
+    typedValue* toReturn = poolAlloc(globalPool);
     *toReturn = (typedValue){
         .ptr = NULL, .value.numberValue = (num){.type = NUM_BOOL, .value.bVal = false}, .valueType = TYPE_NUM
     };
@@ -237,14 +237,14 @@ void sScaleInt(auFunc) {
             case NUM_ULONG: {toReturn->value.numberValue = (num){.type = actualType, .value.ulVal = convertNum(arg0->value.numberValue, NUM_ULONG).value.ulVal}; break;}
         }
     }
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     freeTypedValue(arg0);
     freeTypedValue(arg1);
 }
 // C implementation for scaleDec
 void sScaleDec(auFunc) {
-    typedValue* arg0 = (typedValue*)List_GetElement(args, 0)->data;
-    typedValue* arg1 = (typedValue*)List_GetElement(args, 1)->data;
+    typedValue* arg0 = (typedValue*)getArray(args,  0);
+    typedValue* arg1 = (typedValue*)getArray(args,  1);
     if (arg1->valueType != TYPE_NUM || arg0->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.",-1);}
     
     if (arg1->value.numberValue.type >= NUM_FLOAT) {fatalError(0x30, "Invalid input into a system function.",-1);}
@@ -274,14 +274,14 @@ void sScaleDec(auFunc) {
         case NUM_DOUBLE: {toReturn->value.numberValue = (num){.type = actualType, .value.dVal = convertNum(arg0->value.numberValue, NUM_DOUBLE).value.dVal}; break;}
         case NUM_LONGDOUBLE: {toReturn->value.numberValue = (num){.type = actualType, .value.ldVal = convertNum(arg0->value.numberValue, NUM_LONGDOUBLE).value.ldVal}; break;}
     }
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     freeTypedValue(arg0);
     freeTypedValue(arg1);
 }
 // C implementations for isInf, isNaN, and isNormal
 void sFloatBool(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
-    typedValue* toReturn = malloc(sizeof(typedValue));
+    typedValue* arg0 = getArray(args,  0);
+    typedValue* toReturn = poolAlloc(globalPool);
     *toReturn = (typedValue){.ptr = NULL, .value.numberValue = (num){.type = NUM_BOOL, .value.bVal = false}, .valueType = TYPE_NUM};
     if (arg0->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.",-1);}
     long double ldVal = convertNum(arg0->value.numberValue, NUM_LONGDOUBLE).value.ldVal;
@@ -295,15 +295,15 @@ void sFloatBool(auFunc) {
         toReturn->value.numberValue.value.bVal = !isnormal(ldVal);
     }
     freeTypedValue(arg0);
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
 }
 // C implementations for toExp() and toSciNo()
 void sToExp(auFunc) {
     // arg0 is the number, arg1 is the base, arg2 is if it's a string or not.
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     typedValue* arg1 = NULL;
     bool toSciNo = (strcmp(identifier, "toSciNo") == 0);
-    if (!toSciNo) {arg1 = List_GetElement(args, 1)->data;}
+    if (!toSciNo) {arg1 = getArray(args,  1);}
     if (arg0->valueType != TYPE_NUM || (!toSciNo && arg1->valueType != TYPE_NUM) ) {fatalError(0x30, "Invalid input into a system function.",-1);}
     long double base = toSciNo ? 10.0L : convertNum(arg1->value.numberValue, NUM_LONGDOUBLE).value.ldVal;
     long double toConvert = convertNum(arg0->value.numberValue, NUM_LONGDOUBLE).value.ldVal;
@@ -316,7 +316,7 @@ void sToExp(auFunc) {
     // coeff*base^exp = toConvert
     char n[500]; n[0] = '\0'; sprintf(n, "%Lg*%Lg^%Lg", coeff, base, exp);
     long double d[3] = {coeff, base, exp};
-    typedValue* toReturn = malloc(sizeof(typedValue));
+    typedValue* toReturn = poolAlloc(globalPool);
     *toReturn = (typedValue){
         .valueType = TYPE_STRUCT,
         .ptr = NULL,
@@ -336,14 +336,14 @@ void sToExp(auFunc) {
     ((typedValue**)toReturn->value.so.fields)[0] = doubResult;
     ((typedValue**)toReturn->value.so.fields)[1] = strResult;
     
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     freeTypedValue(arg0);
     if (arg1 != NULL) freeTypedValue(arg1);
 }
 // C implementations for array_push, array_append, and array_insertElement
 void sPush(auFunc) {
-    typedValue* arr = List_GetElement(args, 0)->data;
-    typedValue* toPush = List_GetElement(args, 1)->data;
+    typedValue* arr = getArray(args,  0);
+    typedValue* toPush = getArray(args,  1);
     
     if (arr->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.",-1);}
     typedValue** currentValues = arr->value.av.data;
@@ -363,7 +363,7 @@ void sPush(auFunc) {
         arr->value.av.len++;
     }
     else if (strcmp(identifier, "array_insertElement") == 0) {
-        typedValue* idx = List_GetElement(args, 2)->data;
+        typedValue* idx = getArray(args,  2);
         if (idx->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.",-1);}
         int64_t llidx = convertNum(idx->value.numberValue, NUM_LONG).value.lVal;
         arr->value.av.len++;
@@ -399,8 +399,8 @@ void sPush(auFunc) {
 }
 // C implementations for array_pop & array_removeElement.
 void sPop(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
-    typedValue* arg1 = List_GetElement(args, 1)->data;
+    typedValue* arg0 = getArray(args,  0);
+    typedValue* arg1 = getArray(args,  1);
     if (arg0->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.",-1);}
     if (arg0->value.av.len == 0) {fatalError(0x34, "Cannot use array.removeElement() or array.pop() when its length is zero.",-1);}
     if (arg1->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.",-1);}
@@ -411,7 +411,7 @@ void sPop(auFunc) {
     int64_t toRemove = 0;
     typedValue* arg2 = NULL;
     if (strcmp(identifier, "array_removeElement") == 0) {
-        arg2 = List_GetElement(args, 2)->data;
+        arg2 = getArray(args,  2);
         if (arg2->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.",-1);}
         toRemove = convertNum(arg2->value.numberValue, NUM_LONG).value.lVal;
     }
@@ -428,7 +428,7 @@ void sPop(auFunc) {
     }
     arg0->value.av.len--;
     stackPtr* sp = (stackPtr*)arg0->ptr;
-    if (toReturn != NULL) List_InsertElement(vms->stack, 0, deepcopyTypedValue(toReturn));
+    if (toReturn != NULL) pushArray(vms->stack,deepcopyTypedValue(toReturn));
     if (sp->isTV) {
         freeTVArray(((typedValue*)sp->addr)->value.av);
         ((typedValue*)sp->addr)->value.av = arg0->value.av;
@@ -453,8 +453,8 @@ int cmpNumC(const void* av, const void* bv) {
 }
 // C implementation for array_sort
 void sSort(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
-    typedValue* arg1 = List_GetElement(args, 1)->data;
+    typedValue* arg0 = getArray(args,  0);
+    typedValue* arg1 = getArray(args,  1);
     if (arg0->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.", -1);}
     if (arg0->value.av.arrayType != AT_NUM) {fatalError(0x35, "ICannot sort an array that have a nonnumerical element.", -1);}
     if (arg1->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.", -1);}
@@ -470,7 +470,7 @@ void sSort(auFunc) {
 
     typedValue** tv = malloc(arg0->value.av.len*sizeof(typedValue*));
     for (int i = 0; i < arg0->value.av.len; i++) {
-        tv[i] = malloc(sizeof(typedValue));
+        tv[i] = poolAlloc(globalPool);
         *tv[i] = (typedValue){
             .ptr = NULL,
             .valueType = TYPE_NUM,
@@ -496,7 +496,7 @@ void sSort(auFunc) {
 }
 // C implementation for array_reverse
 void sReverse(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.", -1);}
 
     typedValue** tv = malloc(arg0->value.av.len*sizeof(typedValue*));
@@ -566,7 +566,7 @@ char* typedValueToString(typedValue* tv) {
         toReturn = srealloc(toReturn, 2);
         toReturn[0] = '{'; toReturn[1] = '\0';
         for (int i = 0; i < sd->fields->length; i++) {
-            char* fieldName = (char*)List_GetElement(sd->fields, i)->data;
+            char* fieldName = ((structField*)getArray(sd->fields, i))->name;
             char n[256]; n[0] = '\0'; 
             char* after = i == sd->fields->length - 1 ? "}" : ", ";
             typedValue* tv2 = ((typedValue**)tv->value.so.fields)[i];
@@ -587,20 +587,20 @@ char* typedValueToString(typedValue* tv) {
 }
 // C implementation for newStr().
 void sNewStr(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     char* tc = typedValueToString(arg0);
     typedValue* toReturn = newTVArray(strlen(tc)+1, AT_CHARARR);
     for (int i = 0; i <= strlen(tc); i++) {
         ((typedValue**)toReturn->value.av.data)[i] = numToTV((num){.type = NUM_CHAR, .value.cVal = i == strlen(tc) ? '\0' : tc[i]});;
     }
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     free(tc);
     freeTypedValue(arg0);
 }
 // C implementation for string_swapCase(), string_toUpper(), and string_toLower().
 void sSCase(auFunc) {
-    typedValue* arg0 = (typedValue*)List_GetElement(args, 0)->data;
-    typedValue* arg1 = (typedValue*)List_GetElement(args, 1)->data;
+    typedValue* arg0 = (typedValue*)getArray(args,  0);
+    typedValue* arg1 = (typedValue*)getArray(args,  1);
     
     if (arg1->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.", -1);}
     if (arg0->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.", -1);}
@@ -617,7 +617,7 @@ void sSCase(auFunc) {
         }
         appendTypedValue(toReturn, numToTV((num){.type = NUM_CHAR, .value.cVal = currentChar}));
     }
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     freeTypedValue(arg1);
     freeTypedValue(arg0);
 }
@@ -634,8 +634,8 @@ void cycle(char* input, char newChar) {
 }
 // C implementation for string_findOccurances, string_split, string_splitStr, string_eqSplit, & string_nSplit
 void sSSplit(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
-    typedValue* arg1 = List_GetElement(args, 1)->data;
+    typedValue* arg0 = getArray(args,  0);
+    typedValue* arg1 = getArray(args,  1);
     if (arg0->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.", -1);}
 
     char* n = strArrToChar(arg0);
@@ -747,15 +747,15 @@ void sSSplit(auFunc) {
         }
         free(tok);
     }
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     freeTypedValue(arg0);
     freeTypedValue(arg1);
 }
 // C implementation for string_substring()
 void sSSubstring(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
-    typedValue* arg1 = List_GetElement(args, 1)->data;
-    typedValue* arg2 = List_GetElement(args, 2)->data;
+    typedValue* arg0 = getArray(args,  0);
+    typedValue* arg1 = getArray(args,  1);
+    typedValue* arg2 = getArray(args,  2);
     if (arg0->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.", -1);}
     if (arg1->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.", -1);}
     if (arg2->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.", -1);}
@@ -770,22 +770,22 @@ void sSSubstring(auFunc) {
         typedValue* toAppend = numToTV((num){.type = NUM_CHAR, .value.cVal = n[i-start]});
         ((typedValue**)toReturn->value.av.data)[i-start] = toAppend;
     }
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     freeTypedValue(arg0);
     freeTypedValue(arg1);
     freeTypedValue(arg2);
 }
 // C implementations for string_leftPad & string_rightPad.
 void sSPad(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.", -1);}
     char* str = strArrToChar(arg0);
-    typedValue* arg1 = List_GetElement(args, 1)->data;
+    typedValue* arg1 = getArray(args,  1);
     if (arg1->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.", -1);}
     int amt = convertNum(arg1->value.numberValue, NUM_INT).value.iVal;
     if (amt < 0) {fatalError(0x30, "Invalid input into a system function.", -1);}
 
-    typedValue* arg2 = List_GetElement(args, 2)->data;
+    typedValue* arg2 = getArray(args,  2);
     if (arg2->valueType != TYPE_NUM) {fatalError(0x30, "Invalid input into a system function.", -1);}
     char toAdd = convertNum(arg2->value.numberValue, NUM_CHAR).value.cVal;
 
@@ -808,7 +808,7 @@ void sSPad(auFunc) {
         ((typedValue**)toReturn->value.av.data)[i] = toAppend;
     }
 
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     free(toConvertToString);
     freeTypedValue(arg0);
     freeTypedValue(arg1);
@@ -816,15 +816,15 @@ void sSPad(auFunc) {
 }
 // C implementation for string_replace
 void sSReplace(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.", -1);}
     char* originalStr = strArrToChar(arg0);
 
-    typedValue* arg1 = List_GetElement(args, 1)->data;
+    typedValue* arg1 = getArray(args,  1);
     if (arg1->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.", -1);}
     char* toReplace = strArrToChar(arg1);
 
-    typedValue* arg2 = List_GetElement(args, 2)->data;
+    typedValue* arg2 = getArray(args,  2);
     if (arg2->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.", -1);}
     char* toReplaceWith = strArrToChar(arg2);
 
@@ -892,7 +892,7 @@ void sSReplace(auFunc) {
     free(toReplace);
     free(toReplaceWith);
     free(occurances);
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
 }
 // Enum of valid format specifiers.
 typedef enum {
@@ -1037,7 +1037,7 @@ void appendTypedValue(typedValue* arr, typedValue* toAppend) {
 // C implementation for scan()
 void sScan(auFunc) {
     
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.", -1);}
     if (arg0->value.av.arrayType != AT_CHARARR) {fatalError(0x30, "Invalid input into a system function.", -1);}
     char* formatStr = strArrToChar(arg0);
@@ -1051,7 +1051,7 @@ void sScan(auFunc) {
     bool isValidInput = false;
     for (int i = 1; i < args->length; i++) {
         format cf = formatArr[i-1];
-        typedValue* argN = List_GetElement(args, i)->data;
+        typedValue* argN = getArray(args,  i);
         char* hexC = cf.isHex ? "X" : "";
         char* octalC = cf.isOctal ? "o" : "";
         char* unsignedC = cf.isUnsigned ? "u" : "";
@@ -1226,7 +1226,7 @@ void sScan(auFunc) {
                     .len = strlen(k)+1
                 };
                 for (int i = 0; i <= strlen(k); i++) {
-                    typedValue* toApp = malloc(sizeof(typedValue));
+                    typedValue* toApp = poolAlloc(globalPool);
                     *toApp = (typedValue){
                         .ptr = NULL,
                         .value.numberValue = (num){.type = NUM_CHAR, .value.cVal = i == strlen(k) ? 0 : k[i]},
@@ -1249,7 +1249,7 @@ void sScan(auFunc) {
             }
         }
     }
-    typedValue* toReturn = malloc(sizeof(typedValue));
+    typedValue* toReturn = poolAlloc(globalPool);
     *toReturn = (typedValue){
         .valueType = TYPE_NUM,
         .value.numberValue = (num){
@@ -1258,11 +1258,11 @@ void sScan(auFunc) {
         },
         .ptr = NULL
     };
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     free(formatArr);
     free(formatStr);
     for (int i = 0; i < args->length; i++) {
-        freeTypedValue(List_GetElement(args, i)->data);
+        freeTypedValue(getArray(args,  i));
     }
 }
 // Returns if a character is alphabetical
@@ -1273,7 +1273,7 @@ bool isAlphabetical(char n) {
 }
 // C implementation for print() & formats().
 char* sPrint(auFunc, bool returnResult) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     if (arg0->valueType != TYPE_ARRAY) {fatalError(0x30, "Invalid input into a system function.", -1);}
     char* str = strArrToChar(arg0);
     
@@ -1307,7 +1307,7 @@ char* sPrint(auFunc, bool returnResult) {
             }
             format* f = getFormats(nextChars);
             format cf = f[0];
-            typedValue* argN = List_GetElement(args, formatNum+1)->data;
+            typedValue* argN = getArray(args,  formatNum+1);
             formatNum++;
             if (cf.type == F_TERM) {
                 free(f);
@@ -1426,19 +1426,19 @@ char* sPrint(auFunc, bool returnResult) {
         for (int i = 0; i <= strlen(toPrint); i++) {
             toReturn->value.av.data[i] = numToTV((num){.type = NUM_CHAR, .value.cVal = i == strlen(toPrint) ? 0 : toPrint[i]});;
         }
-        List_InsertElement(vms->stack, 0, toReturn);
+        pushArray(vms->stack,toReturn);
     }
     
     if (!returnResult) free(toPrint);
     free(str); 
     for (int i = 0; i < args->length; i++) {
-        freeTypedValue(List_GetElement(args, i)->data);
+        freeTypedValue(getArray(args,  i));
     }
     if (returnResult) return toPrint;
 }
 // C implementation for throw().
 void sThrow(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
+    typedValue* arg0 = getArray(args,  0);
     int code = 0;
     char* message = "";
     int line = -1;
@@ -1467,12 +1467,12 @@ void sExit(auFunc) {
 }
 // C implementation for !opFunc(), which is used for floor division (//) & exponentiation (**).
 void opFunc(auFunc) {
-    typedValue* arg0 = List_GetElement(args, 0)->data;
-    typedValue* arg1 = List_GetElement(args, 1)->data;
-    typedValue* arg2 = List_GetElement(args, 2)->data;
+    typedValue* arg0 = getArray(args,  0);
+    typedValue* arg1 = getArray(args,  1);
+    typedValue* arg2 = getArray(args,  2);
 
     int toCall = convertNum(arg2->value.numberValue, NUM_INT).value.iVal;
-    typedValue* toReturn = malloc(sizeof(typedValue));
+    typedValue* toReturn = poolAlloc(globalPool);
     if (toCall == 1 && (arg0->value.numberValue.type < NUM_FLOAT || arg1->value.numberValue.type < NUM_FLOAT) ) fatalError(0x30, "Floor division only works with floats", -1);
     switch (toCall) {
         case 1: {
@@ -1499,12 +1499,61 @@ void opFunc(auFunc) {
             break;
         }
     }
-    List_InsertElement(vms->stack, 0, toReturn);
+    pushArray(vms->stack,toReturn);
     freeTypedValue(arg0);
     freeTypedValue(arg1);
     freeTypedValue(arg2);
 }
-
+char* getTypeOf(typedValue* tv, bool sizeFormat) {
+    if (tv->valueType == TYPE_NUM) {
+        switch (tv->value.numberValue.type) {
+            case (NUM_BOOL): return strdup("bool");
+            case (NUM_CHAR): return sizeFormat ? strdup("int8") : strdup("char");
+            case (NUM_SHORT): return sizeFormat ? strdup("int16") : strdup("short");
+            case (NUM_INT): return sizeFormat ? strdup("int32") : strdup("int");
+            case (NUM_LONG): return sizeFormat ? strdup("int64") : strdup("long");
+            case (NUM_UCHAR): return sizeFormat ? strdup("uint8") : strdup("uchar");
+            case (NUM_USHORT): return sizeFormat ? strdup("uint16") : strdup("ushort");
+            case (NUM_UINT): return sizeFormat ? strdup("uint32") : strdup("uint");
+            case (NUM_ULONG): return sizeFormat ? strdup("uint64") : strdup("ulong");
+            case (NUM_FLOAT): return sizeFormat ? strdup("double32") : strdup("float");
+            case (NUM_DOUBLE): return sizeFormat ? strdup("double64") : strdup("double");
+            case (NUM_LONGDOUBLE): return sizeFormat ? strdup("double128") : strdup("longdouble");
+        }
+    }
+    else if (tv->valueType == TYPE_ARRAY) {
+        if (tv->value.av.arrayType == AT_CHARARR) return strdup("string");
+        // get first element's type and return that & [].
+        if (tv->value.av.len == 0) return strdup("array");
+        char* firstIdx = getTypeOf(tv->value.av.data[0], sizeFormat);
+        char* toReturn = malloc(strlen(firstIdx)+1+2);
+        sprintf(toReturn, "%s[]", firstIdx);
+        free(firstIdx);
+        return toReturn;
+    } 
+    else if (tv->valueType == TYPE_STRUCT) {
+        return strdup(tv->value.so.def->name);
+    }
+}
+void stypeOf(auFunc) {
+    typedValue* arg0 = getArray(args, 0);
+    bool sizeFormat = false;
+    typedValue* arg1 = NULL;
+    if (args->length >= 2) {
+        arg1 = getArray(args, 1);
+        if (arg1->valueType != TYPE_NUM) fatalError(0x30, "", -1);
+        if (arg1->value.numberValue.type != NUM_BOOL) fatalError(0x30, "", -1);
+        sizeFormat = arg1->value.numberValue.value.bVal;
+    }
+    char* toReturn = getTypeOf(arg0, sizeFormat);
+    typedValue* tvToReturn = newTVArray(0, AT_CHARARR);
+    for (int i = 0; i < strlen(toReturn); i++) {
+        appendTypedValue(tvToReturn, numToTV((num){.type = NUM_CHAR, .value.cVal = toReturn[i]}));
+    }
+    pushArray(vms->stack, tvToReturn);
+    freeTypedValue(arg0);
+    if (arg1 != NULL) freeTypedValue(arg1);
+}
 
 bool isInFunctionRange(char* n, const bcFunction* bcf, char* start, char* end) {
     bool startFound = false;
@@ -1524,12 +1573,11 @@ bool isInFunctionRange(char* n, const bcFunction* bcf, char* start, char* end) {
 }
 void systemCall(bcFunction* bcDef, virtualMachineState* vms, int argc) {
     char* identifier = bcDef->name;
-    List* args = malloc(sizeof(List));
-    *args = NewList();
+    array* args = mallocArray(0);
     for (int i = 0; i < argc; i++) {
-        List_InsertElement(args, 0, popStack(vms->stack));
+        insertArray(args, 0, popArray(vms->stack));
     }
-
+    // Default import
     if (strcmp(identifier, "scani") == 0 || strcmp(identifier, "scand") == 0) sScanT(auFuncCall);
     else if (strcmp(identifier, "printInt") == 0 || strcmp(identifier, "printDec") == 0) sPrintNS(auFuncCall);
     else if (strcmp(identifier, "printString") == 0) sPrintS(auFuncCall);
@@ -1553,6 +1601,8 @@ void systemCall(bcFunction* bcDef, virtualMachineState* vms, int argc) {
     else if (strcmp(identifier, "throw") == 0) sThrow(auFuncCall);
     else if (strcmp(identifier, "exit") == 0) sExit(auFuncCall);
     else if (strcmp(identifier, "!opFunc") == 0) opFunc(auFuncCall);
+    else if (strcmp(identifier, "typeof") == 0) stypeOf(auFuncCall);
+    // @math
     else if (strcmp(identifier, "ln") == 0 || strcmp(identifier, "log2") == 0 || strcmp(identifier, "log10") == 0 || strcmp(identifier, "log") == 0) mLog(auFuncCall);
     else if (strcmp(identifier, "hypot") == 0 || strcmp(identifier, "sidel") == 0) mHypot(auFuncCall);
     else if (strcmp(identifier, "dToR") == 0 || strcmp(identifier, "rToD") == 0) mDegreeConversion(auFuncCall);
@@ -1561,10 +1611,14 @@ void systemCall(bcFunction* bcDef, virtualMachineState* vms, int argc) {
     else if (isInFunctionRange(identifier, mathFunctions, "ceil", "abs")) mDecFuncs(auFuncCall);
     else if (isInFunctionRange(identifier, mathFunctions, "gcd", "array_prod")) mNumberFunctions(auFuncCall);
     else if (strcmp(identifier, "array_mean") == 0 || strcmp(identifier, "array_median") == 0 || strcmp(identifier, "array_quantiles") == 0) mListOp(auFuncCall);
+    // @time
     else if (strcmp(identifier, "time") == 0 || strcmp(identifier, "clock") == 0 || strcmp(identifier, "getUTC") == 0 || strcmp(identifier, "toUTC") == 0 || strcmp(identifier, "sleep") == 0) tTime(auFuncCall);
+    // @rand
     else if (isInFunctionRange(identifier, randomFunctions, "srand", "array_choose")) rRandom(auFuncCall);
+    // @cplx
     else if (isInFunctionRange(identifier, cplxFunctions, "cexp", "clog")) cExponentialFuncs(auFuncCall);
     else if (isInFunctionRange(identifier, cplxFunctions, "csin", "cacoth")) cTrig(auFuncCall);
+    // @io
     else if (strcmp(identifier, "fOpen") == 0) fNewFile(auFuncCall);
     else if (strcmp(identifier, "file_close") == 0) fClose(auFuncCall);
     else if (strcmp(identifier, "file_getChar") == 0 || strcmp(identifier, "file_getStr") == 0 || strcmp(identifier, "file_getLine") == 0 || strcmp(identifier, "file_read") == 0) fRead(auFuncCall);
