@@ -21,13 +21,30 @@ num.c - Contains some functions for dealing with numbers (If you're interested i
 #include <stdbool.h>
 #include <stdint.h>
 // Aurum headers
-#include "lexer.h"
-#include "parser.h"
-#include "bytecoder.h"
-#include "vm.h"
-#include "winInclude.h"
+#include "processing/lexer.h"
+#include "processing/parser.h"
+#include "processing/bytecoder.h"
+#include "processing/vm.h"
+#include "misc/winInclude.h"
+#include "processing/aurx.h"
 
 void getDirectory(char* path);
+char* getAurX(char* n) {
+    char* buffer = malloc(strlen(n)+2);
+    sprintf(buffer, "%sx", n);
+    return buffer;
+}
+bool isExtension(char* buffer, char* ext) {
+    char* toTake = malloc(strlen(ext)+1); toTake[0] = '\0';
+    int idx = 0;
+    for (int i = strlen(buffer)-strlen(ext); i < strlen(buffer); i++) {
+        toTake[idx++] = buffer[i];
+        toTake[idx] = '\0';
+    }
+    bool isTrue = strcmp(toTake, ext) == 0;
+    free(toTake);
+    return isTrue;
+}
 int main(int argc, char **argv) {
     
     globalPool = createPool(1000*1000*sizeof(typedValue));
@@ -39,30 +56,35 @@ int main(int argc, char **argv) {
     if (sizeof(float) != 4) fatalError(0x8, "Invalid size of float (expected 4). Check the environment in which you are building.", -1); 
     if (sizeof(double) != 8) fatalError(0x8, "Invalid size of double (expected 8). Check the environment in which you are building.", -1); 
     if (sizeof(long double) != 16) fatalError(0x8, "Invalid size of long double (expected 16). Check the environment in which you are building.", -1); 
-    
+    if (isDebug) printf("%lld", sizeof(num));
+    bool saurX = saveAsAurX; // saveAsAurX is an override for debugging.
+    if (argc == 3) {
+        if (strcmp(argv[2], "-x") == 0) saurX = true;
+    }
     // Set console output to 1252; will be future addition to support other stuff.
     setConsoleOutput(1252);
     
     // Set buffer to the path of the file that will be executed;
     char buffer[500]; buffer[0] = '\0';
-    if (isDebug) {
+    if (isDebug && !isDebugX) {
         sprintf(buffer, "./project/main.aur");
     }
-    else if (argc < 0) {
+    else if (isDebug && isDebugX) {
+        sprintf(buffer, "./project/main.aurx");
+    }
+    else if (argc <= 1) {
         scanf("%s", buffer);
     }
     else {
         strcpy(buffer, argv[1]);
     }
     // Checks if the file to be executed has the .aur extension.
-    char toTake[5]; toTake[0] = '\0';
-    int idx = 0;
-    for (int i = strlen(buffer)-4; i < strlen(buffer); i++) {
-        toTake[idx++] = buffer[i];
-        toTake[idx] = '\0';
+    bool exAurX = false;
+    if (isExtension(buffer, executableExtension)) {
+        exAurX = true;
     }
-    if (strcmp(toTake, extension) != 0) {fatalError(0x6, "", -1);}
-
+    else if (!isExtension(buffer, extension)) fatalError(0x6, "", -1);
+    fromAurX(exAurX, buffer); // If exAurX is true, then it'll execute the AurX file. Otherwise, it'll try to manually parse the file.
     // Gets the file's plaintext content.
     if (isDebug) printf("%s", buffer);
     getDirectory(buffer);
@@ -75,6 +97,13 @@ int main(int argc, char **argv) {
     if (isDebug) printAST(program, 0);
     // Converts it back into an array of instructions (which this time are extremely simple, containing only a numeric instruction id, and 0-2 parameters).
     byteCode* bc = convertToBytecode(program);
+    
+    if (saurX) {
+        char* toSaveAs = getAurX(buffer);
+        toAurX(bc, toSaveAs);
+        free(toSaveAs);
+        return 0;
+    }
     if (isDebug) printBytecode(*bc, false, true);   
     // Executes the instructions
     executeBytecode(bc);
