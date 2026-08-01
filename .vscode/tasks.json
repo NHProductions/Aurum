@@ -1,1 +1,61 @@
 
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "type": "shell",
+            "label": "clang: Compile All C Files (Debugging)",
+            "command": "C:/msys64/clang64/bin/clang.exe",
+            "args": [
+                "-g",
+                "-O0",
+                "-fsanitize=address",
+                "-D__USE_MINGW_ANSI_STDIO=1",
+                "-std=c11",
+                "-lm",
+                "${workspaceFolder}\\src\\*.c",
+                "${workspaceFolder}\\src\\processing\\*.c",
+                "${workspaceFolder}\\src\\dataStorage\\*.c",
+                "${workspaceFolder}\\src\\misc\\*.c",
+                "${workspaceFolder}\\src\\systemLibraries\\*.c",
+                "-fshort-enums",
+                "-D__USE_MINGW_ANSI_STDIO=1",
+                "-o", "${workspaceFolder}\\bin\\aurum.exe"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": ["$gcc"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "type": "shell",
+            "label": "Build release build",
+            "command": "C:/msys64/clang64/bin/clang.exe",
+            "args": [
+                "-g",
+                "-O0",
+                "-lm",
+                "${workspaceFolder}\\src\\*.c",
+                "${workspaceFolder}\\src\\processing\\*.c",
+                "${workspaceFolder}\\src\\dataStorage\\*.c",
+                "${workspaceFolder}\\src\\misc\\*.c",
+                "${workspaceFolder}\\src\\systemLibraries\\*.c",
+                "-fshort-enums",
+                "-D__USE_MINGW_ANSI_STDIO=1",
+                "-o", "${workspaceFolder}\\bin\\aurum.exe",
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "problemMatcher": ["$gcc"],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        }
+    ]
+}
