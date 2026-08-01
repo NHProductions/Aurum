@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Clang: Aurum Debug",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}\\bin\\aurum.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "clang: Compile All C Files (Debugging)",
+            "env": {
+                "PATH": "C:\\msys64\\clang64\\bin;${env:PATH}" // Change to whereever your msys clang installation is.
+            }
+        },
+        {
+            "name": "Clang: Aurum Build",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceFolder}\\bin\\aurum.exe",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "Build release build",
+            "env": {
+                "PATH": "C:\\msys64\\clang64\\bin;${env:PATH}" // Change to whereever your msys clang installation is.
+            }
+        },
+    ]
+}
