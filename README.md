@@ -7,3 +7,5 @@ To be clear, Aurum is still an extremely WIP language, and it will get better as
 
 If you want more information as to the installation, syntax, and interpretation of Aurum, the Aurum Standard provides exactly that.
 In addition, I have attached the LaTeX file that I used for the Aurum standard, for anyone that wants to make their own programming standard.
+
+Recommended to have the [VS Code Extension](https://github.com/NHProductions/AurumVS) for Aurum.
