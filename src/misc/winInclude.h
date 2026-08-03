@@ -1,7 +1,7 @@
 #ifndef WININCLUDE
 #define WININCLUDE
 
-#define isDebug true 
+#define isDebug false 
 #define isDebugX false 
 #define saveAsAurX false 
 #define extension ".aur"
