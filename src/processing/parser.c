@@ -717,7 +717,7 @@ ASTNode* parseExpression(List* tokens, int startIndex, int* nextIndex, arithmeti
     // Checks the current index to see if it's valid for parsing (Identifiers, array accessing, operators, grouping symbols, numbers).
     // If it's invalid, copies the node & returns it.
     ASTNode* toCheck = ((ASTNode*)List_GetElement(tokens, startIndex)->data) ;
-    bool isInvalidNode = toCheck->type != AST_IDENTIFIER && toCheck->type != AST_ARRAYACCESS && toCheck->type != AST_OPERATOR && toCheck->type != AST_NUMBER && toCheck->type != AST_BLOCKEND ;
+    bool isInvalidNode = toCheck->type != AST_IDENTIFIER && toCheck->type != AST_ARRAYACCESS && toCheck->type != AST_OPERATOR && toCheck->type != AST_NUMBER && toCheck->type != AST_BLOCKEND && toCheck->type != AST_STRING ;
     if (toCheck->type == AST_BLOCKEND) {
         if (toCheck->value.anyVal[0] != '(' && toCheck->value.anyVal[0] != ')' && toCheck->value.anyVal[0] != '[' && toCheck->value.anyVal[0] != ']') isInvalidNode = true;
     }
@@ -806,6 +806,18 @@ ASTNode* parseExpression(List* tokens, int startIndex, int* nextIndex, arithmeti
                 .type = AST_NUMBER
             };
             //free(token);
+            *nextIndex = idx + 1;
+            return node;
+        }
+        if (token->type == AST_STRING) {
+            ASTNode* node = malloc(sizeof(ASTNode));
+            *node = (ASTNode){
+                .children = NULL,
+                .value.anyVal = strdup(token->value.anyVal),
+                .left = NULL,
+                .right = NULL,
+                .type = AST_STRING
+            };
             *nextIndex = idx + 1;
             return node;
         }

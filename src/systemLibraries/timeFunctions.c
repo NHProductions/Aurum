@@ -70,7 +70,7 @@ void tTime(auFunc) {
             sp->idx = i;
             toReturn->value.so.fields[i]->ptr = sp;
         }
-        free(arg0);
+        freeTypedValue(arg0);
         pushArray(vms->stack,toReturn);
     }
     if (strcmp(identifier, "getUTC") == 0) {
@@ -112,6 +112,6 @@ void tTime(auFunc) {
         if (ms < 0) fatalError(0x30, "", -1);
         int64_t initMS = getMS();
         while (getMS() < ms+initMS) {}
-        free(arg0);
+        freeTypedValue(arg0);
     }
 }

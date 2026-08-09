@@ -79,7 +79,11 @@ typedValue* deepcopyTypedValue(typedValue* tv) {
         }
     }
 }
-
+char* charToStr(char n) {
+    char* toReturn = malloc(2);
+    sprintf(toReturn, "%c", n);
+    return toReturn;
+}
 void printStack(virtualMachineState* vms);
 // Does binary/unary operation using num.c.
 void doVMSOp(virtualMachineState* vms, char* op, bool isBinary) {
@@ -130,10 +134,10 @@ void doVMSOp(virtualMachineState* vms, char* op, bool isBinary) {
         }
     }
     // String concat
-    else if (strcmp(op, "+") == 0 && AType == TYPE_ARRAY && BType == TYPE_ARRAY) {
-        if (A->value.av.arrayType == AT_CHARARR && B->value.av.arrayType == AT_CHARARR) {
+    else if (strcmp(op, "+") == 0 && AType == TYPE_ARRAY && (BType == TYPE_ARRAY || BType == TYPE_NUM)) {
+        if (A->value.av.arrayType == AT_CHARARR) {
             char* Astr = strArrToChar(A);
-            char* Bstr = strArrToChar(B);
+            char* Bstr = BType == TYPE_NUM ? charToStr(B->value.numberValue.value.cVal) : strArrToChar(B);
             char* toAppend = malloc(strlen(Astr)+strlen(Bstr)+1);
             sprintf(toAppend, "%s%s", Astr, Bstr);
             
@@ -455,7 +459,10 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, array* local
             if (toApp->ptr != NULL) free(toApp->ptr);
             toApp->ptr = malloc(sizeof(stackPtr));
             stackPtr* sp = (stackPtr*)arr->ptr;
-            if (!sp->isTV) {
+            if (!sp) {
+
+            }
+            else if (!sp->isTV) {
                 stackVariable* sv = (stackVariable*)sp->addr;
                 *((stackPtr*)toApp->ptr) = (stackPtr){
                     .addr = sv,

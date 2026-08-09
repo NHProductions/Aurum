@@ -16,6 +16,7 @@
 #include <errno.h>
 #include <Windows.h>
 #include <direct.h>
+#include "../processing/vm.h"
 #include "../dataStorage/num.h"
 #include "../dataStorage/array.h"
 #define auFunc virtualMachineState* vms, char* identifier, array* args

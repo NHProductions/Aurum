@@ -19,6 +19,7 @@ Files to check next: mathFunction.c, complexFunctions.c, ioFunction.c, lalgFunct
 
 #include <errno.h>
 #include <Windows.h>
+#include <unistd.h>
 #include <direct.h>
 #include "../dataStorage/num.h"
 
@@ -1060,6 +1061,12 @@ char* getCFormat(format n) {
 // Appends a typedValue to an array.
 void appendTypedValue(typedValue* arr, typedValue* toAppend) {
     arr->value.av.data = srealloc(arr->value.av.data, sizeof(typedValue*)*(arr->value.av.len+1));
+    toAppend->ptr = malloc(sizeof(stackPtr));
+    *(stackPtr*)toAppend->ptr = (stackPtr){
+        .addr = arr,
+        .idx = arr->value.av.len,
+        .isTV = true
+    };
     ((typedValue**)arr->value.av.data)[arr->value.av.len] = toAppend;
     arr->value.av.len++;
 }
@@ -1583,7 +1590,107 @@ void stypeOf(auFunc) {
     freeTypedValue(arg0);
     if (arg1 != NULL) freeTypedValue(arg1);
 }
+void sClrConsole(auFunc) {
+    system("cls");
+}
+void sDimCon(auFunc) {
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    int columns, rows;
 
+    GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+    columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+    rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+
+    typedValue* toReturn = newTVArray(0, AT_NUM);
+    appendTypedValue(toReturn, numToTV((num){.type = NUM_INT, .value.iVal = columns}));
+    appendTypedValue(toReturn, numToTV((num){.type = NUM_INT, .value.iVal = rows}));
+    pushArray(vms->stack, toReturn);
+}
+char readLastCharConsole() {
+    HANDLE hConsole = CreateFileW(L"CONOUT$", GENERIC_READ | GENERIC_WRITE,
+                                  FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                  NULL, OPEN_EXISTING, 0, NULL);
+    if (hConsole == INVALID_HANDLE_VALUE) {
+        return 1;
+    }
+
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    char toReturn = 0;
+    if (GetConsoleScreenBufferInfo(hConsole, &csbi)) {
+        COORD pos = csbi.dwCursorPosition;
+        if (pos.X > 0) {
+            pos.X -= 1;
+        } else if (pos.Y > 0) {
+            pos.X = csbi.dwSize.X - 1;
+            pos.Y -= 1;
+        }
+
+        long read = 0;
+        ReadConsoleOutputCharacter(hConsole, &toReturn, 1, pos, &read);
+           
+    }
+
+    CloseHandle(hConsole);
+    return toReturn;
+}
+void sPopCon(auFunc) {
+    typedValue* arg1 = getArray(args, 0);
+    typedValue* arg2 = getArray(args, 1);
+    bool returnChar = false;
+    bool removeChar = false;
+    if (arg1->valueType != TYPE_NUM) {fatalError(0x30, "", -1);}
+    returnChar = convertNum(arg1->value.numberValue, NUM_BOOL).value.bVal;
+    if (arg2->valueType != TYPE_NUM) {fatalError(0x30, "", -1);}
+    removeChar = convertNum(arg2->value.numberValue, NUM_BOOL).value.bVal;
+
+    char lastChar = readLastCharConsole();
+    if (removeChar) printf("\b \b");
+
+    freeTypedValue(arg1);
+    freeTypedValue(arg2);
+    pushArray(vms->stack, numToTV((num){.type = NUM_CHAR, .value.cVal = lastChar}));
+}
+void sStrOps(auFunc) {
+    typedValue* arg0 = getArray(args, 0);
+    if (strcmp(identifier, "string_op_add") == 0) {
+        char* str0 = arg0->valueType == TYPE_ARRAY ? strArrToChar(arg0) : strFromChar(convertNum(arg0->value.numberValue, NUM_CHAR).value.cVal);
+        typedValue* arg1 = getArray(args, 1);
+        char* str1 = arg1->valueType == TYPE_ARRAY ? strArrToChar(arg1) : strFromChar(convertNum(arg1->value.numberValue, NUM_CHAR).value.cVal);
+        char* toReturn = malloc(strlen(str0) + strlen(str1) + 1);
+        sprintf(toReturn, "%s%s", str0, str1);
+
+        typedValue* tvr = newTVArray(0, AT_CHARARR);
+        for (int i = 0; i < strlen(toReturn); i++) {
+            appendTypedValue(tvr, numToTV((num){.type = NUM_CHAR, .value.cVal = toReturn[i]}));
+        }
+        appendTypedValue(tvr, numToTV((num){.type = NUM_CHAR, .value.cVal = 0}));
+
+        pushArray(vms->stack, tvr);
+        free(str0);
+        free(str1);
+        free(toReturn);
+        freeTypedValue(arg0);
+        freeTypedValue(arg1);
+    }
+    else if (strcmp(identifier, "string_op_eq") == 0) {
+        char* str0 = arg0->valueType == TYPE_ARRAY ? strArrToChar(arg0) : strFromChar(convertNum(arg0->value.numberValue, NUM_CHAR).value.cVal);
+        typedValue* arg1 = getArray(args, 1);
+        char* str1 = arg1->valueType == TYPE_ARRAY ? strArrToChar(arg1) : strFromChar(convertNum(arg1->value.numberValue, NUM_CHAR).value.cVal);
+        
+
+        pushArray(vms->stack, numToTV((num){.type = NUM_BOOL, .value.bVal = strcmp(str0, str1) == 0}));
+        free(str0);
+        free(str1);
+        freeTypedValue(arg0);
+        freeTypedValue(arg1);
+    }
+    else if (strcmp(identifier, "string_op_len") == 0) {
+        char* n = typedValueToString(arg0);
+        pushArray(vms->stack, numToTV((num){.type = NUM_INT, .value.iVal = strlen(n)}));
+        free(n);
+        freeTypedValue(arg0);
+    }
+}
 bool isInFunctionRange(char* n, const bcFunction* bcf, char* start, char* end) {
     bool startFound = false;
     bool endFound = false;
@@ -1625,12 +1732,16 @@ void systemCall(bcFunction* bcDef, virtualMachineState* vms, int argc) {
     else if (strcmp(identifier, "string_substr") == 0) sSSubstring(auFuncCall);
     else if (strcmp(identifier, "string_leftPad") == 0 || strcmp(identifier, "string_rightPad") == 0) sSPad(auFuncCall);
     else if (strcmp(identifier, "string_replace") == 0) sSReplace(auFuncCall);
+    else if (strcmp(identifier, "string_op_add") == 0 || strcmp(identifier, "string_op_len") == 0) sStrOps(auFuncCall);
     else if (strcmp(identifier, "scan") == 0) sScan(auFuncCall);
     else if (strcmp(identifier, "print") == 0 || strcmp(identifier, "formats") == 0) sPrint(auFuncCall, false);
     else if (strcmp(identifier, "throw") == 0) sThrow(auFuncCall);
     else if (strcmp(identifier, "exit") == 0) sExit(auFuncCall);
     else if (strcmp(identifier, "!opFunc") == 0) opFunc(auFuncCall);
     else if (strcmp(identifier, "typeof") == 0) stypeOf(auFuncCall);
+    else if (strcmp(identifier, "clrcon") == 0) sClrConsole(auFuncCall);
+    else if (strcmp(identifier, "dimcon") == 0) sDimCon(auFuncCall);
+    else if (strcmp(identifier, "popcon") == 0) sPopCon(auFuncCall);
     // @math
     else if (strcmp(identifier, "ln") == 0 || strcmp(identifier, "log2") == 0 || strcmp(identifier, "log10") == 0 || strcmp(identifier, "log") == 0) mLog(auFuncCall);
     else if (strcmp(identifier, "hypot") == 0 || strcmp(identifier, "sidel") == 0) mHypot(auFuncCall);

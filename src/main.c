@@ -20,6 +20,7 @@ num.c - Contains some functions for dealing with numbers (If you're interested i
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <windows.h>
 // Aurum headers
 #include "processing/lexer.h"
 #include "processing/parser.h"
@@ -46,7 +47,6 @@ bool isExtension(char* buffer, char* ext) {
     return isTrue;
 }
 int main(int argc, char **argv) {
-    
     globalPool = createPool(1000*1000*sizeof(typedValue));
     // Ensure that char, short, int, int64_t, float, double, & long double are all correct sizes.
     if (sizeof(char) != 1) fatalError(0x8, "Invalid size of char (expected 1). Check the environment in which you are building.", -1); 

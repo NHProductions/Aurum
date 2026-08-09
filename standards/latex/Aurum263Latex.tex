@@ -1,0 +1,2145 @@
+
+\title{$\mathbb{A}urum$ Language Standard}
+\author{@NHProductions on Github}
+\date{Version AUR26.3}
+
+\documentclass[12pt, letterpaper, oneside]{article}
+\usepackage[linguistics]{forest}
+\usepackage{spverbatim}
+\usepackage{hyperref}
+\usepackage{amssymb}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.85}
+
+\begin{document}
+	\maketitle
+	\pagenumbering{roman}
+	\renewcommand{\thepage}{Abstract-\roman{page}}
+	\begin{abstract}
+		This document specifies the syntax, form, and the process of \newline interpretation in the programming language Aurum. Its purpose is to explain how languages work, how that impacts the Aurum programming language, as well the form and style of the Aurum language. While this document isn't a full tutorial, it intends to serve as both a reference for Aurum programmers, as well an intro to the principles of interpreter design.
+		\newline	
+		Sections are included that clarify how various stages of the Aurum interpreter work, the syntax of Aurum, and includes documentation, and usage examples on its standard library functions.
+		\newline
+		This document will change as the Aurum programming language changes.
+		
+	\end{abstract}
+	% Set page numbering to roman numerals, as this is the preface.
+	\renewcommand{\thepage}{\roman{page}}
+	\newpage
+	\tableofcontents
+	\newpage
+	\section{Introduction}
+	\begin{enumerate}
+		\item This document can be changed at any point as the language evolves. Clauses will warn implementer if that function could change in the future.
+		\item This document is divided into several subdivisions:
+		- How the Aurum interpreter works (Sections 2-4)
+		- The Language syntax, contains, and semantics (Section 5)
+		- The Standard library (Section 6)
+	\end{enumerate}
+	\newpage
+	\section{Changed from Last Version}
+		New Features:
+		\begin{itemize}
+			\item[--] \spverb|clrcon() -> void| --- Clears the console that the program is running in.
+			\item[--] \spverb|dimcon() -> int[]| --- Gets the current dimensions of the console the program is running in. 
+			\item[--] \spverb|popcon(bool, bool) -> char| --- Pops a character from the console. If arg0 is true, then returns the last character. If arg1 is true, then removes that character from the console.
+		\end{itemize}
+		Miscellaneous Changes:
+		\begin{itemize}
+			\item[--] Fixed bug where time functions wouldn't free their arguments correctly, causing a memory leak.
+			\item[--] Fixed bug where string concatenation, string equality, and string length wouldn't work correctly due to being mistakenly parsed as operator overloads.
+			
+		\end{itemize}
+	\newpage
+	\section{Getting started}
+		\subsubsection{Requirements}
+			\begin{itemize}
+				\item[--] Have a windows-based system with admin permissions.
+				\item[--] Atleast 2mb of free storage. (The actual executable is way less than that; this is just an estimation)
+				\item[--] Atleast 1gb of ram (For most programs, it takes about 500-600mb of ram)
+			\end{itemize}
+		\subsubsection{Installing Aurum (For users)}
+		\begin{enumerate}
+			\item Aurum only supports windows-based systems.
+			\item Download Aurum from the github page.
+			\item Store it in a safe directory (such as C:/Aurum).
+			\item Add it to your global environment variables. as whatever folder it's in.
+			\item Restart any terminals you may have open.
+			\item Now, you're able to run Aurum files by doing \spverb|aurum file.aur|. Alternatively, you can make an AurX file by doing \spverb|aurum file.aur -x|. This makes a semi-compact semi-executable file that can be used to save interpreted versions of programs. To run an AurX file, do \spverb|aurum file.aurx|. For more info, see \ref{misc:aurx}
+		\end{enumerate}
+		\subsubsection{Building Aurum (For development)}
+		\begin{enumerate}
+			\item Download the github repository.
+			\item Have VS code, clang, and msys32 installed.
+			\item Open the x64 console for VS code as administrator permissions.
+			\item Type in "code" into that console, and it'll open VSCode
+			\item Open the repository in VSCode.
+			\item You should now be able to build it. If you want detailed debugging, go to winInclude.h, and enable "isDebug". If you want to build a release version, do "Clang: Aurum build". If you want to debug (and use fsanitizer), use "Clang: Aurum Debug". If isDebug is on, it will automatically open main.aur in the project directory. Make sure to review .vscode/tasks.json \& .vscode/launch.json to ensure the clang path is correct.
+		\end{enumerate} 
+	\newpage
+	\setcounter{page}{1}
+	\renewcommand{\thepage}{\arabic{page}}
+	\section{Scope}
+	This document specifies the form and process of interpreting programs written in the Aurum programming language. It is designed to promote the portability of Aurum programs in the Windows ecosystem. It is intended for use by implementers, programmers, and language designers. It specifies:
+	\begin{itemize}
+		\item How the Aurum interpreter works, including each step of the process.
+		\item The syntax \& constraints of the Aurum language.
+		\item The representation of data input \& output by Aurum programs.
+	\end{itemize}
+	\section{Terms, definitions, and symbols}
+	This section serves as a reference for terms, definitions, and symbols used throughout this document.
+	\begin{enumerate}
+		\item access (verb): To read or modify the value of an object
+		\item array (noun): Data structure in which items are contiguous.
+		\item argument (noun): Value passed into a function.
+		\item negate (verb): To multiply a number by -1.
+		\item behavior (noun): External appearance or action.
+		\item undefined behavior (noun): Behavior that this document imposes no requirements of, or results from the use thereof.
+		\item bit (noun): Smallest unit of a binary number that represents either 1 or 0.
+		\item byte (noun): 8 bits.
+		\item character (noun): A specified amount of bytes that represent a symbol or letter.
+		\item char (noun): One-byte type that represents an ASCII character (1-255).
+		\item int (noun): 4 byte numeric type (32 bits)
+		\item linked list (noun): Data structure in which nodes are not contiguous --- they contain pointers to the next node.
+		\item long (noun): 8 byte numeric type (64 bits)
+		\item object (noun): Region of memory in execution that can represent values.
+		\item parameter (noun): Variable declared upon a function's declaration that only gains a value when an argument is passed into the function.
+		\item short (noun): 2 byte numeric type.
+		\item signed (adjective): When applied to a type, refers to it being able to support negative numbers.
+		\item stack (noun): Data structure in which items are either pushed (inserted at index 0), or popped (removed at index 0).
+		\item unsigned (adjective): When applied to a type, refers to it not being able to support negative numbers.
+		\item $\lceil x \rceil$ - Arithmetic Ceiling of x (Least integer greater than or equal to x)
+		\newline
+		EXAMPLE: $\lceil 3.055 \rceil = 4$; $\lceil -2.9 \rceil = -2$ 
+		\item $\lfloor x \rfloor$ - Arithmetic Floor of x (Greatest integer less than or equal to x)
+		\newline
+		EXAMPLE: $\lfloor 3.055 \rfloor = 4$; $\lfloor -2.9 \rfloor = -3$ 
+		\item x**y - x raised to the power of y $x^y$
+		\item x//y - x floor-divided by y $\lfloor \frac{x}{y} \rfloor$
+		\item $x\%y$ - x modulo y. (remainder of $x/y$)
+	\end{enumerate}
+	\newpage
+	\section{Aurum Interpreter}
+	This section is about how the Aurum Interpreter transforms plain text code and executes it. It's recommended that you at least have a surface-level knowledge of Aurum's syntax before reading this section.
+	\subsection{Lexing}
+	The first stage of processing is called lexing (Also called tokenizing). During this stage, the code gets turned into an array of tokens. They have a type associated with them, and a value.
+	\begin{figure}[h]
+		\centering
+		\begin{verbatim}
+			typedef enum {
+				T_NONE=0,
+				T_IDENTIFIER,
+				T_OPERATOR,
+				T_STRING,
+				T_CHAR,
+				T_NUMBER,
+				T_KEYWORD,
+				T_DELIMITER,
+				T_GROUPING,
+				T_LIBRARY
+			} tokenType;
+			typedef struct token {
+				tokenType type;
+				char* value;
+			} token;
+		\end{verbatim}
+		\caption{Definitions of the token struct \& tokenType enum}
+	\end{figure} \newline
+	Essentially, the code gets turned into a list of number-string pairs that represent a token's type \& text.
+	\newpage
+	\subsubsection{Example}
+	The example sections in this will use the fizzbuzz problem. If you're \newline unfamiliar with it, it's a test used for new-programmers, as well as programming languages. The task is to make a program that does the following:
+	\begin{itemize}
+		\item[--] Count sequentially, starting from 1.
+		\item[--] If a number is divisible by three, print "fizz".
+		\item[--] If a number is divisible by five, print "buzz".
+		\item[--] If a number is divisible by both three and five, print "fizzbuzz".
+		\item[--] Otherwise, print that number.	
+	\end{itemize} 
+	Example: \begin{verbatim} 1, 2, fizz, 4, buzz, 5, fizz, 7, 8, 9, buzz, 10, 11, fizz, 13, 14, fizzbuzz \end{verbatim}
+	\begin{figure}[h]
+		\begin{verbatim}
+			function fizzbuzz(int amt) -> void {
+				for (int n = 1; n <= amt; n++) {
+					if ( (n % 3 == 0) && (n % 5 != 0) ) {
+						print("fizz\n");
+					}
+					elif ( (n % 5 == 0) && (n % 3 != 0) ) {
+						print("buzz\n");
+					}
+					elif ( (n % 5 == 0) && (n % 3 == 0) ) {
+						print("fizzbuzz\n");
+					}
+					else {
+						print("%i\n", n);
+					}
+				}
+			}
+		\end{verbatim}
+		\caption{Fizzbuzz code}
+		\label{fig:fizzbuzzCode}
+	\end{figure} 
+	\newpage 
+	The lexer then lexes Figure \ref{fig:fizzbuzzCode}, which is shown below. It's in the format of TYPE(text).
+	\begin{figure}[h]
+		\begin{spverbatim}
+			[KW(function), IDENTIFIER(fizzbuzz), GROUPING((), KW(int), IDENTIFIER(amt), GROUPING()) KW($\rightarrow$) KW(void) GROUPING({), KW(for), GROUPING((), KW(int), IDENTIFIER(n), OP(=), NUMBER(1), DELIM(;), IDENTIFIER(n), OP(<=), IDENTIFIER(amt), DELIM(;), IDENTIFIER(n), OP(++), GROUPING()), GROUPING({), KW(if), GROUPING((), GROUPING((), IDENTIFIER(n), OP(%), NUMBER(3), OP(==), NUMBER(0), GROUPING()), OP(&&), GROUPING((), IDENTIFIER(n), OP(%), NUMBER(5), OP(!=) NUMBER(0), GROUPING()), GROUPING()), GROUPING({), IDENTIFIER(print), GROUPING((), STRING(fizz\n), GROUPING()), DELIM(;), GROUPING(}),KW(elif), GROUPING((), GROUPING((), IDENTIFIER(n), OP(%), NUMBER(5), OP(==), NUMBER(0), GROUPING()), OP(&&), GROUPING((), IDENTIFIER(n), OP(%), NUMBER(3), OP(!=), NUMBER(0), GROUPING()), GROUPING()), GROUPING({), IDENTIFIER(print), GROUPING((), STRING(buzz\n), GROUPING()), DELIM(;), GROUPING(}), KW(elif), GROUPING((), GROUPING((), IDENTIFIER(n), OP(%), NUMBER(5), OP(==), NUMBER(0), GROUPING()), OP(&&), GROUPING((), IDENTIFIER(n), OP(%), NUMBER(3), OP(==), NUMBER(0), GROUPING()), GROUPING()), GROUPING({), IDENTIFIER(print), GROUPING((), STRING(fizzbuzz\n), GROUPING()), DELIM(;), GROUPING(}), KW(else), GROUPING({), IDENTIFIER(print), GROUPING((), STRING(%i), DELIM(,), IDENTIFIER(n), GROUPING()), DELIM(;), GROUPING(}), GROUPING(}), GROUPING(})]
+		\end{spverbatim}
+		\caption{Lexed fizzbuzz code.}
+		\label{fig:fizzbuzzLexed}
+	\end{figure}
+	\newline
+	If you want to know more details about the lexing process, look at lexer.c in Aurum's source code, or the wikipedia page on \href{https://en.wikipedia.org/wiki/Lexical_analysis}{lexical analysis}.
+	\newpage
+	\subsection{Parsing}
+	The next stage of processing is called parsing. During this stage, the list of tokens gets turned into an Abstract Syntax Tree. An AST is a tree that represents a program. Nodes are usually composed of a type, value, and a list of child nodes. Here's what Aurum uses for ASTNodes:
+	\begin{verbatim}
+		typedef union {
+			double numberVal;
+			num numVal;
+			char* nameVal;
+			char* opVal;
+			char* anyVal;
+		} ASTValue;
+		typedef struct ASTNode {
+			ASTValue value;
+			struct ASTNode* left;
+			struct ASTNode* right;
+			List* children;
+			ASTType type : 8; // Types not shown, but ASTType is an enum.
+		} ASTNode;
+	\end{verbatim}
+	There's several important consequences of parsing, which make later stages much easier.
+	\begin{itemize} 
+		\item[--] Delimiters are removed in this stage
+		\item[--] Grouping symbols are removed.
+		\item[--] Parsing happens in a way that makes it so that doing PEMDAS isn't necessary (the tree already has PEMDAS implemented)
+		\item[--] +=, -=, *=, /=, and other operator-assignment are turned into "= +"; e.x a += b turns into a = a + b
+	\end{itemize}
+	From highest precedence to least precedence, Aurum uses:
+	$Unary > Exponentiation > Multiplication/Division > Addition/Subtraction > Bitshift > Comparison > Equality > Bitwise Operators > Logical Operators > equality$
+	\newpage
+	\subsubsection{Example}
+	The entire fizzbuzz function is a little bit too big to make into a tree and show here, so here's the parsing of the 1st if statement. \newline
+	\begin{verbatim}
+		Converted Below: if ( (n % 3 == 0) && (n % 5 != 0))
+	\end{verbatim} 
+	\begin{figure}[h] 
+		\begin{forest}
+			[IF
+			[Left: CONDITIONAL
+			[Left: {OPERATOR(\&\&)}
+			[Left: {OPERATOR(==)}
+			[OPERATOR(\%)
+			[IDENTIFIER(n)]
+			[NUMBER(3)]
+			]
+			[NUMBER(0)]
+			]
+			[Right: {OPERATOR(!=)}
+			[Left: {OPERATOR(\%)}
+			[Left: {IDENTIFIER(n)}]
+			[Right: NUMBER(5)]
+			]
+			[Right: NUMBER(0)]
+			]
+			]
+			]
+			]	
+		\end{forest} 
+		\caption{1st if statement in fizzbuzz() parsed}
+		\label{fig:fizzbuzzParsed}
+	\end{figure} 
+	If you want to know more details about the parsing process, look at parser.c in Aurum's source code, or the wikipedia page on \href{https://en.wikipedia.org/wiki/Abstract_Syntax_Tree}{Abstract Syntax Trees}.
+	\newpage 
+	\subsection{Bytecoding \& Execution}
+	While an AST could be executed just from the tree (Like it is in Perl \& Ruby), it's generally better to convert it to another form --- Bytecode. Named for each instruction only being a byte, bytecode is much more efficient than just traversing the AST. Below are the structs used for storing bytecode.
+	\begin{spverbatim}
+		typedef struct {
+			List* instructions;
+			char* name;
+		} chunk;
+		typedef enum opCode {. . . implementation not shown; see Stack Instructions}
+		typedef struct {
+			int* args;
+			char argc;
+			char code;
+		} instruction;
+		typedef struct {
+			List* globals;
+			List* constants;
+			List* functionIdentifiers;
+			List* chunks;
+			List* structDefs;
+		} byteCode;
+	\end{spverbatim}
+	Notice how each instruction is only 10 bytes (padded to 16 bytes), which is a large improvement compared to an ASTNode being 64 bytes. Each \newline instruction is meant to be simple almost-assembly-like instruction acting on a stack of values. Functions are parsed as a separate chunk, then inserted into bytecode.chunks. Struct attributes are parsed into a struct definition, and their functions are parsed as global functions with names in the format of structName\_functionName.
+	\newline
+	In addition, floor division \& exponentiation are converted into calls to !opFunc (see standard library).
+	\newpage
+	\subsubsection{Stack instructions}
+	Below is the full list of stack instructions used by the bytecoder.
+	In this list, letters are used to symbolize the position of a value before being popped from the stack. x is a numeric parameter for the instruction.
+	\begin{itemize}
+		\item LOAD CONST x --- Push constants[x] onto the stack
+		\item LOAD GLOBAL x --- Push a globals[x] onto the stack.
+		\item STORE GLOBAL x --- Pop the stack $\rightarrow$ a; store a into globals[x].
+		\item LOAD LOCAL x --- Push a locals[x] onto the stack.
+		\item LOAD IDX --- Pop the stack twice $\rightarrow$ a \& b. Push b[a] onto the stack.
+		\item STORE IDX --- Pop the stack thrice $\rightarrow$ a, b, c. Store a into c[b].
+		\item ARRAY LEN --- Pop the stack $\rightarrow$ a. Push the length of a onto the stack. This is the \# operator.
+		\item BUILD ARRAY x --- Pop the stack x times. Using the values popped, build an array. Push that array onto the stack.
+		\item NEW STRUCT x --- Push a uninitialized struct with structDefinitions[x] onto the stack.
+		\item GET FIELD x --- Pop the stack $\rightarrow$ a. Push a.x onto the stack.
+		\item ADD --- Pop the stack twice $\rightarrow$ a \& b. Push $a+b$ onto the stack.
+		\item SUB --- Pop the stack twice $\rightarrow$ a \& b. Push $a-b$ onto the stack.
+		\item MUL --- Pop the stack twice $\rightarrow$ a \& b. Push $a*b$ onto the stack.
+		\item DIV --- Pop the stack twice $\rightarrow$ a \& b. Push $a/b$ onto the stack.
+		\item NEG --- Pop the stack once $\rightarrow$ a. Push $-a$ onto the stack.
+		\item MOD --- Pop the stack twice $\rightarrow$ a \& b. Push a \% b onto the stack.
+		\item BXOR --- Pop the stack twice $\rightarrow$ a \& b. Push a \^ b onto the stack.
+		\item BAND --- Pop the stack twice $\rightarrow$ a \& b. Push a \& b onto the stack.
+		\item BNOT --- Pop the stack once $\rightarrow$ a. Push ~a onto the stack.
+		\item BOR --- Pop the stack twice $\rightarrow$ a \& b. Push a $\vert$ b onto the stack.
+		\item LSHIFT --- Pop the stack twice $\rightarrow$ a \& b. Push a \verb|<<|  b onto the stack.
+		\item RSHIFT --- Pop the stack twice $\rightarrow$ a \& b. Push a \verb|>>| b onto the stack.
+		\item GTHAN --- Pop the stack twice $\rightarrow$ a \& b. Push $a>b$ onto the stack.
+		\item LTHAN --- Pop the stack twice $\rightarrow$ a \& b. Push $a<b$ onto the stack.
+		\item LEQTHAN --- Pop the stack twice $\rightarrow$ a \& b. Push $a\geq b$ onto the stack.
+		\item GEQTHAN --- Pop the stack twice $\rightarrow$ a \& b. Push $a\leq b$ onto the stack.
+		\item EQUALS --- Pop the stack twice $\rightarrow$ a \& b. Push a == b onto the stack.
+		\item OR --- Pop the stack twice $\rightarrow$ a \& b. Push a\textbar\textbar b onto the stack.
+		\item AND --- Pop the stack twice $\rightarrow$ a \& b. Push a \&\& b onto the stack.
+		\item NOT --- Pop the stack once $\rightarrow$ a. Push !a onto the stack.
+		\item XOR --- Pop the stack twice $\rightarrow$ a \& b. Push a xor b onto the stack.
+		\item CALL x y - Pop the stack y times. Call x, passing those arguments into x as a of parameters
+		\item JUMP x --- Jump to line x.
+		\item JUMP IF FALSE x --- Pop the stack once $\rightarrow$ a. If a == 0, jump to line x.
+		\item HALT --- Exits the program
+		\item FPTR x --- Makes an fnptr struct that points to x.
+		\item DCALL x --- Pops the stack once $\rightarrow$ a. Pop the stack x times. Call a with x arguments.
+	\end{itemize}
+	\newpage
+	\renewcommand{\thepage}{}
+	\vbox{ 
+		\subsubsection{Example}
+		Going back to the original fizzbuzz program, below is the bytecode for it. Indents \& comments have been added for increased readability.
+		\tiny
+		\begin{spverbatim}
+			for loop
+			Initialization: i=1
+			0. LOAD CONST 1 - Load 1 onto the stack
+			1. STORE LOCAL 1 - Store 1 into local 1 (i)
+			2. JUMP 11 - Jump to line 11 (1st time the for loop happens)
+			Update i: i++
+			3. LOAD LOCAL 1 - Load i onto the stack
+			4. LOAD CONST 37 - Load 1 onto the stack
+			5. ADD - Remove i & 1 from the stack. add i+1 to the stack.
+			6. STORE LOCAL 1 - Store i+1 into i.
+			Check condition: i <= amt
+			7. LOAD LOCAL 1 - Load i onto the stack
+			8. LOAD LOCAL 0 - Load amt onto the stack
+			9. LEQTHAN - Remove i and amt from the stack. add (i <= amt) onto the stack.
+			10. JUMP IF FALSE 63 - Remove (i <= amt) from the stack. If that equals zero, jump to line 63 (ending the loop).
+			1st if condition (i % 3 == 0) && (i % 5 != 0)
+			1st part of the and statement (i % 3 == 0)
+			11. LOAD LOCAL 1 - Load i onto the stack
+			12. LOAD CONST 38 - Load 3 onto the stack
+			13. MOD - Remove i & 3 from the stack, and put i % 3 onto the stack
+			14. LOAD CONST 0 - Load 0
+			15. EQUALS - Remove 0 & (i % 3), and add (i % 3 == 0) onto the stack.
+			2nd part of the and statement (i % 5 != 0)
+			16. LOAD LOCAL 1 - Load i onto the stack
+			17. LOAD CONST 39 - Load 5 onto the stack
+			18. MOD - Remove i & 5 from the stack, and put i % 5 onto the stack.
+			19. LOAD CONST 0 - Load zero onto the stack
+			20. EQUALS - Remove (i % 5) & zero from the stack. Add (i % 5 == 0) to the stack.
+			21. NOT - Remove (i % 5 == 0) from the stack. Add !(i % 5 == 0)
+			22. AND - Remove !(i % 5 == 0) and (i % 3 == 0) from the stack. Add (!(i % 5 == 0) && (i % 3 == 0))
+			23. JUMP IF FALSE 27 - Remove (!(i % 5 == 0) && (i % 3 == 0)) from the stack. If that value is 0, jump to 27.
+			1st if block (print "fizz")
+			24. LOAD CONST 40 - Add the string "fizz" to the stack.
+			25. CALL 7 1 - Remove 1 thing from the stack, and call function 7 (print)
+			26. JUMP 62 - Jump to line 62.
+			2nd if condition (i % 5 == 0) && (i % 3 != 0)
+			Load 1st part of the and statement (i % 5 == 0)
+			27. LOAD LOCAL 1 - Load i onto the stack
+			28. LOAD CONST 39 - Load 5 onto the stack
+			29. MOD - Remove i & 5 from the stack. Add (i % 5) onto the stack.
+			30. LOAD CONST 0 - Load zero onto the stack.
+			31. EQUALS - Remove (i % 5) and 0 from the stack. add (i % 5 == 0) to the stack.
+			Load 2nd part of the and statement (i % 3 != 0)
+			32. LOAD LOCAL 1 - Load i onto the stack.
+			33. LOAD CONST 38 - Load 3 onto the stack.
+			34. MOD - Remove i & 3 from the stack. add (i % 3) to the stack
+			35. LOAD CONST 0 - Load zero onto the stack.
+			36. EQUALS - Remove (i % 3) & zero from the stack. add (i % 3 == 0) to the stack.
+			37. NOT - Remove (i % 3 == 0) from the stack. Add !(i % 3 == 0)
+			38. AND - Remove !(i % 3 == 0) and (i % 5 == 0) from the stack. Add (!(i % 3 == 0) && (i % 5 == 0)) to the stack.
+			39. JUMP IF FALSE 43 - Remove (!(i % 3 == 0) && (i % 5 == 0)) from the stack. If that equals zero, jump to line 43.
+			2nd if block (print "buzz"):
+			40. LOAD CONST 41 - Load "buzz" onto the stack.
+			41. CALL 7 1 - Remove 1 parameter from the stack and call function 7 (print)
+			42. JUMP 62 - Jump to line 62.
+			3rd if condition (i % 5 == 0 && i % 3 == 0):
+			Load 1st part of the and statement (i % 5 == 0)
+			43. LOAD LOCAL 1 - Load i onto the stack
+			44. LOAD CONST 39 - Load 5 onto the stack
+			45. MOD - Remove i & 5 from the stack. Add (i % 5) to the stack.
+			46. LOAD CONST 0 - Load zero onto the stack.
+			47. EQUALS - Remove (i % 5) & zero from the stack. add (i % 5 == 0)
+			Load 2nd part of the and statement (i % 3 == 0)
+			48. LOAD LOCAL 1 - Load i onto the stack.
+			49. LOAD CONST 38 - Load 3 onto the stack.
+			50. MOD - Remove i & 3 from the stack. add (i % 3) to the stack.
+			51. LOAD CONST 0 - Load zero onto the stack.
+			52. EQUALS - Remove (i % 3) and zero from the stack. Add (i % 3 == 0) to the stack.
+			53. AND - Remove (i % 3 == 0) and (i % 5 == 0) from the stack. add (i % 3 == 0 && i % 5 == 0) to the stack
+			54. JUMP IF FALSE 58 - Remove (i % 3 == 0 && i % 5 == 0) from the stack. Jump to line 58 if it's equal to zero.
+			3rd if block (print "fizzbuzz"):
+			55. LOAD CONST 42 - Add "fizzbuzz" to the stack.
+			56. CALL 7 1 - Remove "fizzbuzz" from the stack, and call function 7 (print).
+			57. JUMP 62 - Jump to line 62.
+			else block (print the number):
+			58. LOAD CONST 43 - Load "%i" onto the stack.
+			59. LOAD LOCAL 1 - Load i onto the stack
+			60. CALL 7 2 - Take two parameters from the stack (%i and i), and call print().
+			61. JUMP 62 - Jump to line 62
+			start the loop again:
+			62. JUMP 3 - Jump to line 3
+		\end{spverbatim} \normalsize}
+	\newpage
+	
+	\renewcommand{\thepage}{\arabic{page}}
+	\newpage
+	\section{Language Standard}
+	\subsection{Types}
+	The meaning of a value is determined by its type. Below is a list of types in Aurum.
+	The following types are typed to store integer numbers.
+	\begin{enumerate}
+		\item bool --- Stores either true or false.
+		\item char/int8 --- Stores integers in the range [-127, 127]. Has 1 byte. Is used to also map numbers to ASCII characters.
+		\item uchar/uint8 --- Stores integers in the range [0, 255]. Has 1 byte. Is used to also map numbers to ASCII characters.
+		\item short/int16 --- Stores integers in the range [$-{2^{15}-1}$, $2^{15}-1$]. Has 2 bytes.
+		\item ushort/uint16 --- Stores integers in the range [0, $2^{16}-1$]. Has 2 bytes.
+		\item int/int32 --- Stores integers in the range [$-{2^{31}-1}$, $2^{31}-1$]. Has 4 bytes.
+		\item uint/uint32 --- Stores integers in the range [0, $2^{31}-1$]. Has 4 bytes.
+		\item long/int64 --- Stores integers in the range [$-{2^{63}-1}$, $2^{63}-1$]. Has 8 bytes.
+		\item ulong/uint64 --- Stores integers in the range [0, $2^{63}-1$]. Has 8 bytes.
+	\end{enumerate}
+	The following types are used to store decimal numbers. They have a set amount of bits for exponent, and a set amount of bits for their mantissa, and 1 bit for signage.
+	\begin{enumerate}
+		\item float/double32 --- Stores decimal numbers. Has 23 bits for its mantissa, 8 bits for its exponent, and 1 bit for signage.
+		\item double/double64 --- Stores decimal numbers. Has 47 bits for its mantissa, 16 bits for its exponent, and 1 bit for signage.
+		\item longdouble/double128 --- Stores decimal numbers. Has 95 bits for its mantissa, 32 bits for its exponent, and 1 bit for signage.
+	\end{enumerate}
+	The user can also define custom types (structs). For more info on that, see the section on structs.
+	In addition, there's serveral system-defined structs. Below are those imported in the default library:
+	\begin{enumerate}
+		\item string - Used to store arrays of characters. Has to end with a null terminator (0).
+		\item exception - Used to store runtime errors.
+	\end{enumerate}
+	\subsection{Lexical Elements}
+	A Lexical Element (or a token) is the smallest unit that is read by the lexer. Below is the various types of lexical units, and what happens to them as the interpretation process takes place.
+	\subsubsection{Keywords}
+	A keyword is a reserved identifier for Aurum. There's 47 keywords in Aurum, listed as follows:
+	\begin{enumerate}
+		\item[1--26.] Types used by the user to declare variables.
+		\item[27.] NaN --- Floating-point constant that signifies "Not a Number".
+		\item[28.] inf --- Floating-point constant used to represent infinities.
+		\item[29 \& 30.] Boolean true \& false
+		\item[31--33.] If, else, and elif --- Used to declare conditional statements.
+		\item[34 \& 35.] Switch \& Case --- Used to declare switch/case statements.
+		\item[36--39.] For, While, break, \& continue --- Used to declare loops.
+		\item[40---42] Function, return, \verb|->|, \& void --- Used to declare functions.
+		\item[43.] struct --- Used to declare structs.
+		\item[44.] import --- Used to import other files \& libraries.
+		\item[45.] const --- Used to make variables immutable.
+		\item[46.] auto --- Used to make it so that the type for the variable is resolved at runtime.
+	\end{enumerate}
+	
+	\subsubsection{Number Literals}
+	Number literals can be defined by having a type suffix after them:
+	\begin{spverbatim}
+		12345c - Coerces a number to a char.
+		12345uc - Coerces a number into a uchar.
+		12345s - Coerces a number to a short.
+		12345us - Coerces a number to a ushort
+		12345i - Coerces a number to an int.
+		12345ui - Coerces a number to a uint.
+		12345l - Coerces a number to a long.
+		12345ul - Coerces a number to a unsigned long
+		12345.02f - Coerces the number to a float.
+		23256.5d - Coerces the number to a double64.
+		5325.999ld - Coerces the number to a double128.
+	\end{spverbatim}
+	Integers can also be defined by having a base prefix before the number. This is undefined behavior for decimal types:
+	\begin{spverbatim}
+		0xFFA12 - Interprets the number as a hex literal (Converts it into a decimal number during tokenization)
+		0d91247 - Interprets the number as a decimal literal (Does nothing)
+		0o77127 - Interprets the number as a octal literal (Converts it into a decimal number during tokenization)
+		0b10110 - Interprets the number as a binary literal (Converts it into a decimal number during tokenization.
+	\end{spverbatim}
+	All stages of the interpretation process have some method to store numbers. Most of these stages employ the num struct (see Figure \ref{fig:num}) to store numbers regardless of type. 
+	\begin{figure}[h]
+		\begin{spverbatim}
+			typedef struct {
+				numberTypes type;
+				union {
+					char cVal; // 1 byte
+					unsigned char ucVal; // 1 byte
+					short sVal; // 2 bytes
+					unsigned short usVal; // 2 bytes
+					int iVal; // 3 bytes
+					unsigned int uiVal; // 3 bytes
+					int64_t lVal; // 8 bytes (64 bits)
+					uint64_t ulVal; // 8 bytes (64 bits)
+					float fVal; // 4 bytes (32 bits)
+					double dVal; // 8 bytes (64 bits)
+					long double ldVal; // 16 bytes (128 bits)
+					bool bVal; // 1 byte
+				} value;
+			} num;
+		\end{spverbatim}
+		\caption{num struct}
+		\label{fig:num}
+	\end{figure}
+	
+	\newpage
+	\subsubsection{Array Literals}	
+	Array literals can be declared in the following format: \verb|[elementOne, elementTwo, ...]|.
+	Literals have to be surrounded by brackets, and have commas seperating elements.
+	In addition, array literals are only allowed to have one unique type (e.x, you can't have an array literal with both strings and integers).
+	
+	During lexing, array literals are tokenized as:
+	\begin{spverbatim}
+		[1, 2, 3] -> GROUPING([) NUMBER(1) COMMA(,) NUMBER(2) COMMA(,) NUMBER(3), GROUPING(]).
+	\end{spverbatim}
+	Which then, during parsing, are turned into: \newline
+	\begin{forest}
+		[ARRAY\_LITERAL
+		[child0: NUMBER(1)],
+		[child1: NUMBER(2)],
+		[child2: NUMBER(3)]
+		]
+	\end{forest}
+	During bytecoding, if they are able to be turned into a constant, they are. If not, they are build during execution using BUILDARRAY instruction.
+	\newpage
+	\subsubsection{String \& Character Literals}
+	Strings \& Character literals are declared by using quotes. Double-quotes signify a string, and single-quotes signify a character. Single-quote strings are only allowed to have one character. Strings can only have ASCII characters (wide-strings have not been implemented yet. See section \ref{sec:future}).
+	
+	Several escape sequences have been defined for characters that are inconvenient for strings. Below are the full list of escape sequences:
+	
+	\begin{figure}[h]
+		\begin{tabular}{|p{3cm}|p{4cm}|p{3cm}|}
+			\hline
+			Escape sequence& Character produced& Locale\\
+			\hline
+			\verb|\n|&newline&Any\\
+			\hline
+			\verb|\t|&tab&Any\\
+			\hline
+			\verb|\"|&"&Any\\
+			\hline
+			\verb|\'|&'&Any\\
+			\hline
+			\verb|\\|&\verb|\|&Any\\
+			\hline
+			\verb|\e|&€ (Euro)&English-US 1252\\
+			\hline
+			\verb|\tm|&\texttrademark&English-US 1252\\
+			\hline
+			\verb|\em|& --- (EM dash)&English-US 1252\\
+			\hline
+			\verb|\en|& -- (EN dash)&English-US 1252\\
+			\hline
+			\verb|\c|&\textcent&English-US 1252\\
+			\hline
+			\verb|\p|&\pounds&English-US 1252\\
+			\hline
+			\verb|\y|&\textyen&English-US 1252\\
+			\hline
+			\verb|\s|&\textsection&English-US 1252\\
+			\hline
+			\verb|\cp|&\copyright&English-US 1252\\
+			\hline
+			\verb|\r|&\textregistered&English-US 1252\\
+			\hline
+			\verb|\pm|&$\pm$&English-US 1252\\
+			\hline
+			\verb|\mi|&$\mu$&English-US 1252\\
+			\hline
+			\verb|\pa|&\textparagraph&English-US 1252\\
+			\hline
+			\verb|\x00|&Grab an ASCII char using hex code.&Any\\
+			\hline
+		\end{tabular}
+		\caption{Table of escape sequences}
+		\label{fig:escp}
+	\end{figure}
+	\newpage
+	\subsection{Comments}
+	A line can be commented out using ` (grave).
+	example:
+	\begin{spverbatim}
+		int a = 2; ` a = 5;
+		print("%i", a); ` prints "2".
+	\end{spverbatim}
+	\subsection{Operators}
+	An operator is a symbol used to modify data.
+	\subsubsection{Binary Arithmetic Operators}
+	The binary arithmetic operators are as follows:
+	\begin{itemize}
+		\item[--] +; computes $a+b$ e.x $2+3 = 5$
+		\item[--] Binary -; computes $a-b$ e.x $5-2 = 3$
+		\item[--] Unary -; computes $-a$ e.x $-2 = -2$
+		\item[--] *; computes $a*b$ e.x $5*3 = 15$
+		\item[--] /; computes $a/b$ e.x $6/2 = 3$
+		\item[--] \%; computes $a\%b$ e.x $7\%3 = 1$
+	\end{itemize}
+	The following are cases that you might want to be aware of if you are dealing with binary arithmetic operators.
+	\begin{enumerate}
+		\item If at any point the program attempts to do n/0, it will throw an error. 
+		\item If a \& b are unsigned integers, and $b > a$, doing $a-b$ will NOT throw an error. It will silently wrap around. (e.x $3ui-5ui = 253ui$).  
+		\item If a or b aren't integers, $a \% b$ will throw an error.
+	\end{enumerate}
+	\subsubsection{Bitwise Operators}
+	A bitwise operator is an operator that modifies a number's binary data (or bits). They are as follows:
+	\begin{itemize}
+		\item[--] $\vert$; computes bitwise or (A bit is 1 in the result if that position is 1 in one or both of the numbers). e.x $0b101101 \vert 0b110000 = 0b111101$
+		\item[--] \&; computes bitwise and (A bit is 1 in the result if that position is 1 in both of the numbers). e.x $0b101101 \& 0b110000 = 0b100000$
+		\item[--] \verb|^|; computes bitwise xor (A bit is 1 in the result if that position is 1 in exactly 1 of the numbers). e.x $0b101101 \verb|^| 0b110000 = 0b011101$
+		\item[--] \~; computes bitwise not (A bit is 1 in the result if that bit is 0 in the number). e.x \verb|~|0b101101 = 0b010010.
+		\item[--] \verb|<<| - Computes right bitshift (adds n zeroes). e.x 0b11 \verb|<<| 2 = 0b1100.
+		\item[--] \verb|>>| - Computes left bitshift (removes n digits) e.x 0b1101 \verb|>>| 2 = 0b11.
+	\end{itemize}
+	The following are some cases you might want to be aware of if you are dealing with binary arithmetic operators.
+	\begin{enumerate}
+		\item All of these only work with integers.
+		\item Shifting negative numbers is undefined behavior.
+	\end{enumerate} 
+	\subsubsection{Logical Operators}
+	A logical operator is an operator whose parameters are booleans or whose result is a boolean. They are as follows:
+	\begin{itemize}
+		\item[--] $\vert\vert$; computes logical or. a $\vert\vert$ b is true if at least one input is true.
+		\item[--] \&\&; computes logical and. a \&\& b is true if a and b are true.
+		\item[--] \verb|^^|; computes logical xor. a \verb|^^| b is true if either a or b are true, but not both.
+		\item[--] !!; computes logical not. !a is true if a is false.
+		\item[--] \verb|>>|; computes greater than. a \verb|>| b is true if a is greater than b.
+		\item[--] \verb|<<|; computes less than. a \verb|<| b is true if a is less than b.
+		\item[--] \verb|>=| / \verb|=>|; computes greater than. a \verb|>=| b is true if a is greater than or equal to b.
+		\item[--] \verb|<=| / \verb|=<|; computes less than. a \verb|<=| b is true if a is less than or equal to b.
+		\item[--] ==; computes equality. a == b is true if a equals b.
+		\item[--] !=; computes inequality. a != b is true if a isn't equal to b.
+	\end{itemize}
+	\subsubsection{Other Operators}
+	These are operators who have special conditions or don't really fit with other categories.
+	\begin{itemize}
+		\item[--] **; computes exponentiation; returns $a^b$. Operations that result in a complex number throw an error (see section \ref{sec:cplx})
+		\item[--] //; computes floor division; returns $\lfloor \frac{a}{b} \rfloor$.
+		\item[--] \#; computes array length. e.x \#[2,4,6,8] = 4.
+	\end{itemize}
+	\subsubsection{Assignment Operators}
+	The assignment operator is =. It assigns the value of the right side to the left.
+	Any operator except unary operators \& logical operators can be turned into an assignment operator by appending an =. e.x + $\rightarrow$ +=.
+	\subsubsection{Operators during interpretation}
+	During lexing, operators are processed as seperate tokens. In parsing, assignment operators are broken up into constituent parts (e.x a += b $\rightarrow$ a = a+b ). During bytecoding, // and ** are turned into !opFunc calls (as they are a bit too complicated to just turn into a opcode.)
+	\newpage
+	\subsection{Declarations}
+	\subsubsection{Variable Declarations \& Assignment}
+	A variable can be declared in the following format: \spverb|specifiers? type name = value;|. That variable is then assigned to its local scope. Variables in other scopes can have the same name as the variable, and are unable to access the original variable. Having variable specifiers is optional, especially as there's only one right now --- const. The const specifier makes a variable immutable, throwing an error if it's changed.
+	
+	After a variable has been declared, it can be changed if the current scope has access to it. That can be done by doing this format: \spverb|name = value;|.
+	
+	Variables can be referred to anywhere in their scope.
+	
+	During lexing, variables are treated as \spverb|[KW(specifier), KW(type), IDENTIFIER(name), OPERATOR(=) NUMBER(value)]|.
+	
+	In parsing, declarations are parsed as the following: 
+	\begin{figure}[h] 
+		\begin{forest}
+			[VARDECLARATION
+			[Left: Type]
+			[Right: name]
+			[child0: value]
+			]
+		\end{forest}
+		\begin{forest}
+			[ASSIGNMENT
+			[Left: Null]
+			[Right: name]
+			[child0: value]
+			]
+		\end{forest}
+		\caption{Variable declarations during parsing}
+		\label{fig:varparse}
+	\end{figure}  
+	Then, during bytecoding, assignment \& declaration are converted into one instruction: STORE\_LOCAL \& STORE\_GLOBAL (depending on the scope of the variable).
+	\subsubsection{Function Declarations}
+	Functions are declared in the following format:
+	\begin{spverbatim}
+		function name(typeParamA paramAName, . . .) -> returnType {
+			function block stuff
+		}
+	\end{spverbatim}
+	The name can be any identifier, same with parameter names. \newline 
+	returnType can either be a normal type, or void (which means it doesn't return anything).
+	Functions do create their own scope, and they can be called from anywhere.
+	Functions cannot modify their own variables locally
+	Recursion is allowed. Infinite recursion is allowed.
+	\newpage
+	\begin{spverbatim}
+		function n(int a) -> void {
+			a = 5; ` ILLEGAL
+		}
+	\end{spverbatim}
+	Functions can be called from anywhere in the program.
+	
+	In addition, a function called main() has to be declared, as it's the entry-point for execution.
+	
+	During parsing, function declarations are parsed into this format:
+	\newline
+	\begin{forest}
+		[FUNCTIONDECLARATION
+		[Left: Name]
+		[Right: Returntype]
+		[child0: PARAM
+		[Left: paramType]
+		[right: paramName]
+		]
+		[child1: BLOCK
+		[child0 stuff]
+		[child1 morestuff]
+		]
+		]
+	\end{forest}
+	Function calls are parsed into this format:
+	\newline
+	\begin{forest}
+		[FUNCCALL
+		[Left: Name]
+		[Right: NULL]
+		[child0: PARAM
+		[Left: value]
+		]
+		]
+	\end{forest}
+	\newline
+	Then, during bytecoding, instructions inside of function declarations are processed into chunks of code added to the bytecode struct.
+	Function calls are processed into \spverb|CALL x y|, where x is the function index, and y is the amount of arguments passed.
+	
+	
+	\label{misc:fnptr}
+	It's also possible to turn functions into variables. Doing \spverb|&functionName| makes a function pointer (fnptr), which then can be used to dynamically call functions. A function pointer can be called by doing \spverb|ptrName().|. If a fnptr called returns a struct, it's illegal to access the members \& functions of that struct, without first assigning it to a variable.
+	\newpage
+	Example:
+	\begin{spverbatim}
+		Example 1:
+		function add(int a, int b) -> int {
+			return a+b;
+		}
+		fnptr a = &add;
+		a(2,3);
+		Example 2:
+		function str() -> string {
+			return "Hello World!";
+		}
+		fnptr b = &str;
+		b().toUpper(3) ` ILLEGAL
+		string c = b();
+		c.toUpper(3) ` Legal
+	\end{spverbatim}
+	\newline
+	During parsing, \& is treated as a unary operator. Then, during bytecoding, it gets processed into \spverb|FPTR x|, where x is the function's index. Calls to dynamic functions get processed into \spverb|DCALL y|, where y is the amount of arguments. Below is example 1 converted into bytecode.
+	
+	\begin{spverbatim}
+		add (idx 0):
+			1. LOAD LOCAL 0 (a)
+			2. LOAD LOCAL 1 (b)
+			3. ADD
+			4. RETURN
+		main (idx 1):
+			1. FPTR 0
+			2. STORE LOCAL 0
+			3. LOAD CONST 0 (2)
+			4. LOAD CONST 1 (3);
+			5. LOAD LOCAL 0 (&add)
+			6. DCALL 2
+	\end{spverbatim}
+	\newpage
+	\subsubsection{Struct Declarations}
+	A struct is a datatype that contains other datatypes (members), and \newline functions. They can be used to represent more complex structures. Below is how structs are declared in Aurum:
+	\begin{spverbatim}
+		struct name {
+			int attribute1; ` Initializing members isn't allowed.
+			int attribute2;
+			string attribute3;
+			function name(int attr1, int attr2, string attr3) -> name {
+				this.attribute1 = attr1;
+				this.attribute2 = attr2;
+				this.attribute3 = attr3;
+				return this; ` Important: Constructors must always return this.
+			}
+			function anotherFunc() -> int {
+				return this.attribute1*this.attribute2;
+			}
+		}
+	\end{spverbatim}
+	\begin{itemize}
+		\item[--] To access a member of a struct, do \spverb|structName.attributeName|.
+		\item[--] To call a function from a struct, do \spverb|structName.functionName()|.
+		\item[--] To declare a variable with type struct, do \newline \spverb|structName varName = structName()|.
+		\item[--] All struct functions have a hidden parameter --- this. Anytime \newline \spverb|sp.functionName(param1, param2)| is called, three arguments are \newline actually passed; \spverb|structName_functionName(sp, param1, param2)|, and the current struct can be referenced by using \spverb|this|
+		\item[--] A function whose name is the same as a struct is called a \newline constructor. e.x \spverb|structName var = structName()|. Constructors are used to initialize a struct's values.
+		\newpage
+		
+		\label{misc:operatorOverloading}
+		\item[--] There are a total of 25 predefined function names that are reserved for operator overloads. They are: \newline 
+			\begin{tabular}{|p{3cm}|p{4cm}|}
+			\hline
+			Operator&Function name\\
+			\hline
+			+&op\_add\\
+			\hline
+			Binary minus&op\_sub\\
+			\hline
+			Unary minus&op\_neg\\
+			\hline
+			*&op\_mul\\
+			\hline
+			/&op\_div\\
+			\hline
+			\&\&&op\_and\\
+			\hline
+			$\vert\vert$&op\_or\\
+			\hline
+			\spverb|^^|&op\_xor\\
+			\hline
+			!=&op\_neq\\
+			\hline
+			==&op\_eq\\
+			\hline
+			\spverb|>=|&op\_geqthan\\
+			\hline
+			\spverb|<=|&op\_leqthan\\
+			\hline
+			\spverb|>|&op\_gthan\\
+			\hline
+			\spverb|<|&op\_lthan\\
+			\hline
+			Unary !&op\_not\\
+			\hline
+			\&&op\_band\\
+			\hline
+			$\vert$&op\_bor\\
+			\hline
+			\spverb|^^|&op\_bxor\\
+			\hline
+			Unary ~&op\_bnot\\
+			\hline
+			\spverb|<<|&op\_lshift\\
+			\hline
+			\spverb|>>|&op\_rshift\\
+			\hline
+			\%&op\_mod\\
+			\hline
+			//&op\_fdiv\\
+			\hline
+			**&op\_exp\\
+			\hline
+			Unary \spverb|#|&op\_len\\
+			\hline
+			\end{tabular} \newpage
+			Example usage:
+			\begin{spverbatim}
+				struct a {
+					int numa;
+					int numb;
+					` Constructor not shown
+					function op_add(a n) -> a {
+						return a(n.numa + this.numa, n.numb + this.numb);
+					}
+					function b() -> int {
+						return 2;
+					}
+				}
+				...
+				a(1,2) + a(3,2) == a(4,4)
+				(a(1,2) + a(3,2)).b ` ILLEGAL, operator overloading only works with simple expressions (No func calls, struct accesses, or array accesses.). The alternative here would be a(3,2).op_add(a(1,2)).b
+			\end{spverbatim} 
+	\end{itemize}
+	\begin{figure}[h]
+		\begin{forest}
+			[STRUCT DECLARATION
+			[child0: declaration of attribute 1]
+			[child2: declaration of constructor()]
+			]
+		\end{forest}
+		\caption{How struct declarations are parsed}
+	\end{figure}
+	
+	\begin{figure}[h]
+		\begin{forest}
+			[STRUCT DECLARATION
+			[Left: IDENTIFIER(structName)]
+			[Right: IDENTIFIER(member)]
+			]
+		\end{forest}
+		\caption{How struct accessing is parsed}
+	\end{figure}
+	\newpage
+	\begin{itemize}
+		\item[--] Struct functions are parsed differently from other functions: the function's name is changed to \spverb|structName_functionName|, and they gain an extra parameter. This means that one could add custom functions to system structs, simply by declaring a function named \spverb|array_functionName| or \spverb|string_functionName|. Struct functions are turned into \spverb|CALL x y| during bytecoding.
+		\item[--] A struct's variables \& name are moved into a structDefinition, which is used to see if a struct access is valid or not. Struct accessing is turned into \spverb|GET FIELD x| or \spverb|SET FIELD x|.
+		\item[--] During bytecoding, Strings and arrays becoming their own structs, which contain standard-library functions.
+	\end{itemize} \newpage
+	\subsubsection{Array Assignment}
+	\begin{itemize}
+		\item[--] To declare an array, do \spverb|type[] name = []|. This also applies to \newline multidimensional arrays; \spverb|double128[] multidim = [[2ld, 3ld, 4ld], [5ld, 6ld, 7ld]]|. 
+		\item[--] Arrays can be accessed or assigned to by indexing them \spverb|array[n]|, where n is the position within the array that is accessed, starting from 0. This also applies to multidimensional arrays, where \spverb|array[n][m] = value| is valid, as well as \spverb|array[n] = array2|.
+	\end{itemize}
+	During parsing, array accessing is turned into 
+	
+	\begin{figure}[h]
+		\begin{forest}
+			[ARRAY\_ACCESS
+			[Left: IDENTIFIER(name)]
+			[Right: NUMBER(index)]
+			]
+		\end{forest}
+		\caption{How array access is parsed}	
+	\end{figure} 
+	During bytecoding, array access / assignment are turned into \spverb|LOAD IDX x| and \spverb|STORE IDX x|. \newpage 
+	\subsection{Statements}
+	A statement is a keyword or combination of keywords that are used to implement logic into a program.
+	\subsubsection{Selection Statements}
+	A selection statement is a statement that executes different conditions based on the values of different booleans. In Aurum, there are two types of selection statements: if-statements, and switch-case statements.
+	
+	
+	An if statement executes a block of code based on the value of a condition.
+	\begin{spverbatim}
+		if (condition) {
+			` block
+		}
+	\end{spverbatim}
+	In the above example, condition has to be any boolean value or expression that results in a boolean value. In addition to if statements, elif and else blocks can also be attached to it.
+	\begin{spverbatim}
+		if (condition) {
+			block
+		}
+		elif (anotherCondition) {
+			anotherblock
+		}
+		elif (athirdcondition) {
+			athirdblock
+		}
+		else {
+			elseBlock
+		}
+	\end{spverbatim}
+	The important thing about if-else statements is that ONLY one of the blocks will be executed. If statements can have an infinite amount of elif \& blocks. There's only allowed to be one if block, and one else-block in an if-else statement.
+	
+	\newpage
+	During parsing, if statements are parsed as the following: \newline 
+	\begin{figure}[h]
+		\begin{forest}
+			[IF\_STATEMENT
+			[child0: 1st conditional
+			[Left: boolean expression]
+			[Right: BLOCK
+			[Whatever is in here]
+			]
+			]
+			[child1: 2nd conditional
+			[Left: boolean expression]
+			[Right: BLOCK
+			[Whatever is in here]
+			]
+			]
+			]
+		\end{forest} 
+		\begin{forest}
+			[ELSE
+			[BLOCK
+			[Whatever is in here]
+			]
+			]
+		\end{forest}
+		\caption{How if, elif, \& else statements are parsed.}
+	\end{figure} \newline
+	During bytecoding, they are parsed as a collection of jump statements (see below)
+	\begin{spverbatim}
+		If statement:
+		1. Not shown: Load condition 1
+		2. JUMP_IF_FALSE 5
+		3. ; Not shown: Executes If block 1
+		4. JUMP 10
+		Elif statement
+		5. ; Not shown: Load condition 2
+		6. JUMP_IF_FALSE 9
+		7. ; Not shown: Executes If block 2
+		8. JUMP 10
+		Else statement:
+		9. ; Not shown; Else block
+		After the if statement:
+		10. HALT
+	\end{spverbatim}
+	\newpage
+	
+	
+	There's also another type of selection statement: switch statements. They are essentially a simpler if-else statement, and they get parsed similarly. Benefits of using switch statements include increased readability \& having simpler code. Below is a switch statement in Aurum.
+	\begin{spverbatim}
+		switch (value) {
+			case (condition) {
+				block1
+			}
+			case (value) {
+				block2
+			}
+		}
+	\end{spverbatim}
+	\newline
+	Switch statements can have an infinite amount of blocks. Each case statement can have ANY boolean expression, or just a literal. Below is an example of a switch statement:
+	\begin{spverbatim}
+		int a = 20;
+		switch (a) {
+			case (19) {  ` Values can be used
+				block1;
+			}
+			case (a == 10)  { ` Any boolean expression can be used
+				block2;
+			} 
+			case (a % 2 == 0) {
+				block3;
+			}
+		}
+	\end{spverbatim}
+	Default statements have not been implemented yet. They can be emulated using a statement that is always true.
+	
+	
+	During parsing, switch statements get parsed as:
+	\begin{figure}[h]
+		\begin{forest}
+			[SWITCH
+			[left: value]
+			[child0: CASE
+			[Left: Condition]
+			[Right: Block]
+			]
+			[child1: CASE
+			[Left: Condition]
+			[Right: Block]
+			]
+			]
+		\end{forest}
+		\caption{Parsed switch statement}	
+	\end{figure}
+	Then, during bytecoding they get parsed as a collection of conditionals. During this stage, any equals signs that need inserted are inserted.
+	\begin{figure}[h]
+		\begin{spverbatim}
+			1st Condition:
+			1. Load condition (not shown)
+			2. JUMP_IF_FALSE 5
+			3. 1st block (not shown)
+			4. JUMP 9
+			2nd Condition:
+			5. Load condition (not shown)
+			6. JUMP_IF_FALSE 9
+			7. 2nd block (not shown)
+			8. JUMP 9
+			9. After switch statement (not shown)
+		\end{spverbatim}
+		\caption{Bytecoded switch statement}	
+	\end{figure} 
+	\subsubsection{Iteration Statements}
+	An iterative statement is a statement that can run multiple times. In Aurum, there's two types of iterative statements: while loops, and for loops.
+	
+	A while loop is a loop that will run as long as its condition is true. Below is a while loop in Aurum.
+	\begin{spverbatim}
+		while (condition) {
+			block;
+		}
+	\end{spverbatim} \newpage
+	The condition is checked before the block is ran. During parsing, while loops are parsed as:
+	
+	
+	\begin{figure}[h]
+		\begin{forest}
+			[WHILE
+			[Left: condition]
+			[Right: block]
+			]
+		\end{forest}
+		\caption{How while loops are parsed}
+	\end{figure} 
+	During bytecoding, while loops are converted into the following format:
+	\begin{spverbatim}
+		1. condition (not shown)
+		2. JUMP_IF_FALSE 5
+		3. block (not shown)
+		4. JUMP 1
+		5. after loop (not shown)	
+	\end{spverbatim} 
+	While loops are not guaranteed to run.
+	
+	There's another type of iterative statement: for loops. They declare an initializer variable, and then a condition is checked every time the loop runs. After the loop, the variable is updated, and the condition checked again. Below is an example of a for loop in Aurum:
+	\begin{spverbatim}
+		for (int i = 0; i < 20; i++) {
+			block
+		}
+	\end{spverbatim}
+	Each for loop has three parts: \spverb|for (starting value; conditional; update)|. 
+	
+	During parsing, for loops are turned into:
+	\begin{figure}[h]
+		\begin{forest}
+			[FORLoop
+			[Left: Initialization]
+			[Right: Condition]
+			[child0: Update]
+			[child1: Block]
+			]
+		\end{forest}	
+		\caption{Parsed for loop}
+	\end{figure} 
+	\newpage
+	During bytecoding, for loops are converted to:
+	\begin{spverbatim}
+		1. Declares the iteration variable (not shown)
+		2. JUMP 6
+		3. Update variable (not shown)
+		4. Condition (not shown)
+		5. JUMP_IF_FALSE 8
+		6. block (not shown)
+		7. JUMP 3
+		8. After loop (not shown)
+	\end{spverbatim}
+	For loops are guaranteed to run at least once.
+	
+	There's two useful statements to keep in mind when making loops --- break \& continue. Break exits the loop immediately. Continue jumps back to the condition-check (In for loops, it jumps to the update block). In parsing, break \& continue are parsed as seperate nodes. In bytecoding, they are converted into JUMP x.
+	\subsubsection{Other statements}
+	Below is a list of some other useful statements:
+	\begin{itemize}
+		\item[--] \spverb|return x|; In a function, stops execution, and sends the value back to whatever called the function. In parsing, gets parsed as:
+		\begin{figure}[h]
+			\begin{forest}
+				[RETURN
+				[Left: value]
+				]
+			\end{forest}
+			\caption{Return statement parsed}
+		\end{figure} \newline
+		In bytecoding, return gets its own opcode.
+		\item[--] \spverb|import "file.aur"|; used to import a file. Function declarations \& struct declarations become available to this file. Has to have quotes surrounding the file name.
+		\item[--] \spverb|import @library|; used to import libraries. Has to have an @ before the library name.
+	\end{itemize}
+	
+	
+	\section{Standard Library}
+	The Aurum standard library has a total of 250 functions to facilitate program development. They are split into 7 libraries:
+	\begin{itemize}
+		\item[--] Default - No import statement needed; these are global functions that developers can access anywhere. Has 41 functions.
+		\item[--] Math - To import, use \spverb|import @math;|. The Math library includes functions on base conversions, exponents/logarithms, geometry, trigonometry, number properties, and statistics. Has 83 functions. Has two sub-libraries that requires math to be imported:
+		\begin{itemize}
+			\item[--] Complex Numbers - To import, use \spverb|import @cplx|. The complex library includes the cplxNum struct, which supports operations with complex numbers, and various functions using complex numbers. Has 42 functions.
+			\item[--] Linear Algebra - To import, use \spverb|import @lalg;|. This is the only library fully written in Aurum. Has structs for vector2's, vector3's, arbitrary-dimension vectors, and matrices. Has 52 functions.
+		\end{itemize}
+		\item[--] Time - To import, use \spverb|import @time;|. The time library includes functions on getting the current time, UTC formatting, and time. Has 4 functions.
+		\item[--] Io - To import, use \spverb|import @io;|. The io library includes functions on manipulating files and directories. Has 16 functions.
+		\item[--] Rand - To import, use\spverb|import @rand;|. The random library includes functions on generating random numbers, permutations, combinations, factorials (and $\Gamma()$). Has 10 functions.
+		\newpage
+	\end{itemize}
+	\subsection{Default Functions}
+	These are functions that don't require any imports to use.
+	\subsubsection{Console Functions}
+	These functions allow a program to interface with the console.
+	\begin{itemize}
+		\item[--] \spverb|printInt(string, int?) -> void| - Prints an integer to the console preceded by a string. Arg1 can be any integer type. Examples: 
+		
+		
+		\begin{spverbatim}
+			printInt("Number:", 5i) - Prints "Number: 5" to the console.
+			printInt("Test:", 19l) - Prints "Test: 19" to the console.
+		\end{spverbatim}
+		\item[--] \spverb|printDec(string, double?, int?) -> void| - Prints a decimal (up to arg2 places) to the console preceded by a string. Arg1 can be any decimal type (float, double, double128). Arg2 can be any integer type. Examples: 
+		
+		
+		\begin{spverbatim}
+			printDec("Number:", 5.1899i, 2); - Prints "Number: 5.19" to the console.
+			printDec("Test:", 19.55ld, 9); - Prints "Test: 19.550000000" to the console.
+		\end{spverbatim}
+		\item[--] \spverb|printString(string) -> void| - Prints a string to the console. Examples:
+		
+		
+		\begin{spverbatim}
+			printString("\n"); - Prints newline to the console.
+			printString("Hello World!") - Prints "Hello World!" to the console.
+		\end{spverbatim}
+		\newpage
+		\item[--] \spverb|print(string, any, any, any ...) -> void | - Prints a formatted string to the console. Formats are declared by using the \% character, and then the type of the format. The format string can have an infinite amount of characters, and an infinite amount of specifiers. Below is a list of acceptable formats for print():
+		\begin{itemize}
+			\item[--] \spverb|%s| - String e.x \spverb|print("Message: %s", "Hello World!")| $\rightarrow$ "Message: Hello World!"
+			\item[--] \spverb|%c| - Character e.x \spverb|print("Char: %c", 65c)| $\rightarrow$ "Char: A"
+			\item[--] \spverb|%h| - Short e.x \spverb|print("Short: %h", 19s)| $\rightarrow$ "Short: 19"
+			\item[--] \spverb|%i| - Int e.x \spverb|print("Int: %h", 190i)| $\rightarrow$ "Int: 190"
+			\item[--] \spverb|%l| - Long e.x \spverb|print("long: %l", 1900l)| $\rightarrow$ "Long: 1900"
+			\item[--] \spverb|%f| - Float e.x \spverb|print("Float: %h", 19.191f)| $\rightarrow$ "Float: 19.191"
+			\item[--] \spverb|%d| - Double e.x \spverb|print("Double: %d", 19.191d)| $\rightarrow$ "Double: 19.191d"
+			\item[--] \spverb|%D| - Double128 e.x \spverb|print("Double128: %h", 19ld)| $\rightarrow$ "Double128: 19"
+			\item[--] \spverb|%a| - Array (Prints it in the format of \spverb|[a, b, c, ...]|)
+			\item[--] \spverb|%o| - Struct (Prints it in the format of \spverb|{attr1 : value1, attr2 : value2 ...}|)
+			
+			
+			\item[--] \spverb|%O_| - Signals to print function to print it in base 8 (octal). (Int specifiers only)
+			\item[--] \spverb|%u_| - Signals to print function to print as an unsigned number. (Int specifiers only)
+			\item[--] \spverb|%x_| - Signals to print function to print it in base 16 (hex). (Int specifiers only)
+			\item[--] \spverb|%g_| - Signals to print function to print it as compact as possible (Using either normal notation or e-notation) (Float specifiers only)
+		\end{itemize}
+		\newpage
+		\item[--] \spverb|scani(string) -> long| - Prints the string, and waits for the user to enter a integer. If the user enters an invalid character, returns 0. Example:
+		
+		
+		\begin{spverbatim}
+			scani("Enter a number: ") - Prints "Enter a number: " and pauses execution until the user enters a number.
+		\end{spverbatim}
+		\item[--] \spverb|scand(string) -> double128| - Prints the string, and waits for the user to enter a long double. If the user enters an invalid character, returns 0. Example: 
+		
+		
+		\begin{spverbatim}
+			scani("Enter a number: ") - Prints "Enter a number: " and pauses execution until the user enters a number.
+		\end{spverbatim}
+		\item[--] \spverb|scan(string, . . .) -> bool| - Doesn't print anything. For each print specifier in the string, prompt the user. If the value entered is valid, then set the nth argument passed into scan to the value they entered. Invalid for the \spverb|%a| and \spverb|%o| specifiers. Return value is if the inputs entered is valid. Examples:
+		
+		
+		\begin{spverbatim}
+			double a;
+			int b;
+			scan("%d %i", a, b) - Prompts the user twice, 1st for a double, and 2nd for an integer. Sets the value of a to the first input, and the value of b to the 2nd.
+		\end{spverbatim}
+		\newline
+		\item[--] \spverb|dimcon() -> int[]| - Gets the current dimensions of the console the program is running in. Returns it in the format of [cols, rows].
+		\item[--] \spverb|clrcon() -> void| - Clears the console the program is running in.
+		\item[--] \spverb|popcon(bool, bool) -> char| --- Pops a character from the console. If arg0 is true, then returns the last character. If arg1 is true, then removes that character from the console.
+		\newpage
+	\end{itemize}
+	\subsubsection{Type Conversions}
+	These are functions that are used to convert between types.
+	\begin{itemize} 
+		\item[--] \spverb|strToInt(string) -> long| - Converts a string into a long. Example:
+		
+		
+		\begin{spverbatim}
+			string n = "299.34";
+			strToInt(n) - Returns 299.
+		\end{spverbatim}
+		\item[--] \spverb|strToDec(string) -> double128| - Converts a string into a double128. Example:
+		\begin{spverbatim}
+			string n = "299.34";
+			strToDec(n) - Returns 299.34.
+		\end{spverbatim}
+		\item[--] \spverb|scaleInt(int?, int?) -> int?| - Converts an integer of one size to another. 1st input is the integer, 2nd input is the size to convert it to. Acceptable values for the 2nd input:
+		\begin{itemize}
+			\item[--] 1 - Bool
+			\item[--] 8 - Char
+			\item[--] -8 - uChar
+			\item[--] 16 - Short
+			\item[--] -16 - uShort
+			\item[--] 32 - Int
+			\item[--] -32 - uInt
+			\item[--] 64 - Long
+			\item[--] -64 - uLong
+		\end{itemize}
+		Example:
+		
+		
+		\begin{spverbatim}
+			char n = 29c;
+			int m = scaleInt(n, 32); - m is now a integer with the value of 29.
+		\end{spverbatim}
+		
+		\item[--] \spverb|scaleDec(double?, int?) -> double?| - Converts a decimal of one size to another. 1st input is the decimal, 2nd input is the size to convert it to. Acceptable values for the 2nd input:
+		\begin{itemize}
+			\item[--] 32 - Float
+			\item[--] 64 - Double
+			\item[--] 128 - Double128
+		\end{itemize}
+		Example:
+		
+		
+		\begin{spverbatim}
+			float n = 29f;
+			double m = scaleDec(n, 64); - m is now a double with the value of 29.
+		\end{spverbatim}
+		\item[--] \spverb|newStr(any) -> string| - Converts a value to a string. Example:
+		
+		
+		\begin{spverbatim}
+			float n = 29.555f;
+			string m = newStr(n) - m is now a string whose value is "29.555"
+		\end{spverbatim}
+		\label{misc:typeof}
+		\item[--] \spverb|typeof(auto, optional bool) -> string| - Returns the type of an input. If the input is a number and arg1 is true, it will format number inputs as "int8", "uint64", "double32" instead of "char", "ulong", and "float". Structs passed in return their name. Arrays passed in returns the type of their first element and "[]". e.x \spverb|typeof([2,4,6,8]) -> "int[]"|.
+	\end{itemize}
+	\newpage
+	\subsubsection{Floats}
+	These are functions that are used to manipulate floats.
+	\begin{itemize}
+		\item[--] \spverb|isInf(float?), isNaN(float?), isNormal(float?) -> bool| - Returns if a float is infinity, NaN, or normal. Examples:
+		\item[--] \spverb|toExp(float?, float?), toSciNo(double?) -> floatConversion| - Converts a float into some form of $n*base^{p}$, where n, base, \& p are numbers. Base is the 2nd parameter passed (10 in the case of toSciNo). floatConversion is a struct used to store this, containing a string representation of it, and a double[] representation. Examples:
+		\begin{spverbatim}
+			Definition of the floatConversion struct:
+			struct floatConversion {
+				double[] arrayConversion;
+				string stringConversion;
+				function floatConversion(double[] arr, string str) -> floatConversion {
+					this.arrayConversion = arr;
+					this.stringConversion = str;
+					return this;
+				}
+			}
+		\end{spverbatim}
+		\begin{spverbatim}
+			Examples:
+			float number = 2**19+59;
+			toExp(number, 2) - Converts it to some form of n*2^p
+			toSciNo(number) - Converts it to n*10^p.
+		\end{spverbatim}
+	\end{itemize}
+	\newpage
+	\subsubsection{Arrays}
+	These are functions use to manipulate arrays.
+	\begin{itemize}
+		\item[--] \spverb|array_push(any), array_append(any), array_insertElement(any, int?) -> void| - Inserts an element into an array. The index at which it inserts depends on the function called;
+		
+		
+		\begin{tabular}{|p{4cm}|p{5cm}|}
+			\hline
+			Function called&Where it inserts\\
+			\hline
+			array\_push&Index 0\\
+			\hline
+			array\_append&Last index\\
+			\hline 
+			array\_insertElement&At a index provided by arg1\\
+			\hline 
+		\end{tabular}
+		
+		Examples:
+		\begin{spverbatim}
+			int[] arr = [4,6,8,10];
+			arr.push(2);
+			arr.append(12);
+			print("%a", arr) - Prints "[2,4,6,8,10,12]"
+		\end{spverbatim}
+		\item[--] \spverb|array_pop(bool), array_removeElement(bool, int?) -> ?| - \newline Removes an element from an array. If the boolean passed is true, then returns that element. If not, doesn't return it. Array\_pop removes the first element, while array\_removeElement removes at the index.
+		
+		
+		Examples:
+		\begin{spverbatim}
+			int[] arr = [3,4,5,6,7,8,9,10];
+			print("Removed %i", arr.pop(true));
+			arr.removeElement(false, 1);
+			print("Removed %i", arr.removeElement(true, 2));
+			arr.removeElement(false, 3);
+			print("%a", arr) - Prints "[4,6,8,10]"
+		\end{spverbatim}
+		\item[--] \spverb|array_reverse() -> void| - Reverses an array. Modifies the original array. Example:
+		
+		
+		\begin{spverbatim}
+			int[] arr = [4,3,5,4,7,1,9,10];
+			arr.reverse();
+			print("\n%a\n", arr); ` prints [10,9,1,7,4,5,3,4]
+		\end{spverbatim}
+		\newpage 
+		\label{misc:arraySort}
+		\item[--] \spverb|array_sort(fnptr) -> array| - Sorts an array. The function passed through is a comparison function. The function passed through has to be declared as \spverb|function cmp(any a, any b) -> int|. If $cmp(a,b) > 0$, then that means b needs to be before a. If $cmp(a,b) < 0$, then that means a needs to be before b. Doesn't modify the original array.
+		
+		
+		\begin{spverbatim}
+			function cmpstr(string a, string b) -> int {
+				if (#a > #b) {return -1;}
+				if (#a < #b) {return 1;}
+				return 0;
+			}
+			function cmpstr2(string a, string b) -> int {
+				if (#a > #b) {return 1;}
+				if (#a < #b) {return -1;}
+				return 0;
+			}
+			string[] arr = ["aaa", "b", "cc", "dddd"];
+			print("%a", arr.sort(&cmpstr)); ` ["dddd", "aaa", "cc", "b"]
+			print("%a", arr.sort(&cmpstr2)); ` ["b", "cc", "aaa", "dddd"]
+		\end{spverbatim}
+	\end{itemize}
+	\subsubsection{Strings}
+	These are functions used to manipulate strings. Additionally, strings have two operator-overloads, which are:
+	\begin{itemize}
+		\item[--] +; concatenation. e.x \spverb|"Hello, " + "World!" = "Hello World!"|.
+		\item[--] ==; equality. e.x \spverb|"Hello" == "Hello"|.
+	\end{itemize}
+	Functions used to manipulate strings are:
+	\begin{itemize}
+		\item[--] \spverb|string_toUpper(int), string_toLower(int), string_swapCase(int) -> string| - Manipulates the casing of the 1st arg0 characters. If arg0 is zero, applies the function to the whole string. Examples:
+		
+		\begin{spverbatim}
+			string n = "Hello World!";
+			print("\n%s\n", n.toUpper(3)) ` prints "HELlo World!".
+			print("\n%s\n", n.toLower(3)) ` prints "hello World!".
+			print("\n%s\n", n.swapCase(3)) ` prints "hELlo World!".						
+		\end{spverbatim}
+		\item[--] \spverb|string_findOccurances(string) -> int[]| - Returns an array \newline containing the indices that the string shows in up. If the string entered has multiple characters, the index returned is the index of the 1st character. Example:
+		
+		
+		\begin{spverbatim}
+			string n = "The quick brown fox jumps over the lazy dog";
+			int[] o = n.toLower(0).findOccurances("the"); ` [0,31]
+			int[] p = n.toLower(0).findOccurances("e"); ` [2, 28, 33]
+		\end{spverbatim}
+		\item[--] \spverb|string_split(char) & string_splitStr(string) -> string[]| - Splits a string by a character (Or in the case of \spverb|string_splitStr|, a string). Any characters after the last instance of the filter is also added to the string. Example:
+		
+		\begin{spverbatim}
+			string n = "The quick brown fox jumps over the lazy dog";
+			string[] a = n.split(" "); ` ["The", "quick", "brown", "fox", "jumps", "over", "the", "lazy", "dog"]
+			string[] b = n.split("e "); ` ["Th", "quick brown fox jumps over th", "lazy dog"]
+		\end{spverbatim}
+		\item[--] \spverb|string_eqSplit(int n) & string_nSplit(int n) -> string[]| - \newline eqSplit splits the string into equal parts whose length is n. nSplit splits the string into n equal parts. Any part of the string that doesn't follow that function's rule is also added. Example:
+		
+		
+		\begin{spverbatim}
+			string n = "The quick brown fox jumps over the lazy dog";
+			string[] a = n.eqSplit(5); ` ["The quic", "k brown ", "fox jump", "s over t", "he lazy ", "dog"]; 5 equal parts, and leftover characters.
+			string[] b = n.nSplit(5); ` ["The q", "uick ", "brown", " fox ", "jumps", " over", " the " "lazy " "dog"]; Parts whose length is 5, and leftover characters.
+		\end{spverbatim}
+		\item[--] \spverb|string_leftPad(int, char), string_rightPad(int, char) -> string| - Adds a character arg0 times to either the start (leftPad), or end (rightPad), of a string. Example:
+		
+		\begin{spverbatim}
+			string n = "Hello World!";
+			string m = n.leftPad(3, 'a'); ` "aaaHello World!"
+			string o = n.rightPad(3, 'a'); ` "Hello World!aaa"
+		\end{spverbatim}
+		\item[--] \spverb|string_replace(string, string) -> string| - Replaces all instances of arg0 with arg1 in the string. Example:
+		
+		\begin{spverbatim}
+			string n = "The quick brown fox jumps over the lazy dog";
+			string m = n.toLower(0).replace("the", "string"); ` "string quick brown fox jumps over string dog"
+		\end{spverbatim}
+		\item[--] \spverb|formats(string, . . .) -> string| - Works exactly like print(), but doesn't print it to the console and instead returns it as a string. \newline Example:
+		
+		\begin{spverbatim}
+			int a = 2;
+			int b = 5;
+			int c = 10;
+			string quadratic = formats("(-%i\pmsqrt(%i^2-4*%i*%i)/2*%i)", b, b, a, c, a);
+			print("\n%s", quadratic) ` prints "(-5±sqrt(5^2-4*2*10)/2*2)"
+		\end{spverbatim}
+	\end{itemize}
+	\subsubsection{Error Handling}
+		The Aurum standard library includes some tools for error-handling. It doesn't have try-catch statements yet, but that will come in a future update.
+		\begin{itemize}
+			\item[--] \spverb|exception(int, string, int) -> exception| - Creates a new exception
+			\item[--] \spverb|throw() -> void| - Prints the error and exits the program.
+			\item[--] \spverb|exit() -> void| - Exits the program. 
+		\end{itemize}
+		\newpage
+	\subsection{@math Library}
+	These are mathematical functions and constants.
+	\subsubsection{Math Constants}
+	The following are the constants included with @math. They will not include usage examples.
+	\begin{itemize}
+		\item[--] \spverb|const float M_PI8;| - Mathematical constant of $\pi$ to 8 digits.
+		\item[--] \spverb|const double M_PI16;| - Mathematical constant of $\pi$ to 16 digits.
+		\item[--] \spverb|const double128 M_PI32;| - Mathematical constant of $\pi$ to 32 digits.
+		\item[--] \spverb|const double M_PI;| - Shorthand for \spverb|M_PI16|.
+		\newline
+		\item[--] \spverb|const float M_E8;| - Mathematical constant of $e$ to 8 digits.
+		\item[--] \spverb|const double M_E16;| - Mathematical constant of $e$ to 16 digits.
+		\item[--] \spverb|const double128 M_E32;| - Mathematical constant of $e$ to 32 digits.
+		\item[--] \spverb|const double M_E;| - Shorthand for \spverb|M_E16|.
+		\newline
+		\item[--] $\tau = 2\pi \approx 6.28318$
+		\item[--] \spverb|const float M_TAU8;| - Mathematical constant of $\tau$ to 8 digits.
+		\item[--] \spverb|const double M_TAU16;| - Mathematical constant of $\tau$ to 16 digits.
+		\item[--] \spverb|const double128 M_TAU32;| - Mathematical constant of $\tau$ to 32 digits.
+		\item[--] \spverb|const double M_TAU;| - Shorthand for \spverb|M_TAU16|.
+		\newline
+		\item[--] \spverb|const float M_SQRT28;| - Mathematical constant of $\sqrt{2}$ to 8 digits.
+		\item[--] \spverb|const double M_SQRT216;| - Mathematical constant of $\sqrt{2}$ to 16 digits.
+		\item[--] \spverb|const double128 M_SQRT232;| - Mathematical constant of $\sqrt{2}$ to 32 digits.
+		\item[--] \spverb|const double M_SQRT2;| - Shorthand for \spverb|M_SQRT216|.
+		\newline
+		\item[--] $\phi = Golden Ratio = \frac{1 + \sqrt{5}}{2} \approx 1.618033$
+		\item[--] \spverb|const float M_GRAT8;| - Mathematical constant of $\phi$ to 8 digits.
+		\item[--] \spverb|const double M_GRAT16;| - Mathematical constant of $\phi$ to 16 digits.
+		\item[--] \spverb|const double128 M_GRAT32;| - Mathematical constant of $\phi$ to 32 digits.
+		\item[--] \spverb|const double M_GRAT;| - Shorthand for \spverb|M_GRAT16|.
+		\newline
+		\item[--] \spverb|const float M_SSUBNORMALF;| - Smallest subnormal float ($\approx {2}^{-149}$).
+		\item[--] \spverb|const double M_SSUBNORMALD;| - Smallest subnormal double ($\approx {2}^{-1074}$).
+		\item[--] \spverb|const double128 M_SSUBNORMALLD;| - Smallest subnormal double128 ($\approx {2}^{-16495}$).
+		\newline
+		\item[--] \spverb|const float M_LSUBNORMALF;| - Largest subnormal float ($\approx (2-(2^{-23}))*2^{-126}$).
+		\item[--] \spverb|const double M_LSUBNORMALD;| - Largest subnormal double ($\approx (2-(2^{-52}))*2^{-1022}$).
+		\item[--] \spverb|const double128 M_LSUBNORMALLD;| - Largest subnormal double128 
+		($\approx (2-(2^{-112}))*2^{-16382}$).
+		\newline
+		\item[--] \spverb|const float M_EPSILONF;| - Gap between 1 \& the next larger float ($\approx 2^{-23}$).
+		\item[--] \spverb|const double M_EPSILOND;| - Gap between 1 \& the next larger double ($\approx 2^{-52}$).
+		\item[--] \spverb|const double128 M_EPSILONLD;| - Gap between 1 \& the next larger double128 ($\approx
+		2^{-112}$).
+		\newline
+		\item[--] \spverb|const float M_FMAX;| - Largest non-infinity float ($\approx (2-(2^{-23}))*2^{127}$).
+		\item[--] \spverb|const double M_DMAX;| - Largest non-infinity double ($\approx (2-(2^{-52}))*2^{1023}$).
+		\item[--] \spverb|const double128 M_LDMAX;| - Largest non-infinity double128 
+		($\approx (2-(2^{-112}))*2^{16383}$).
+		\item[--] \spverb|const float M_FMIN;| - Smallest non-infinity float ($-M\_FMAX$).
+		\item[--] \spverb|const double M_DMIN;| - Smallest non-infinity double ($-M\_DMAX$).
+		\item[--] \spverb|const double128 M_LDMIN;| - Smallest non-infinity double128 
+		($-M\_LDMAX$).
+		\item[--] \spverb|const char M_MAX8 = const char M_MAXC = 127| - Maximum value that the char datatype can store.
+
+		\item[--] \spverb|const char M_MAX8U = const char M_MAXUC = 127| - Maximum value that the uchar datatype can store.		
+		\newline
+		\item[--] \spverb|const short M_MAX16 = const short M_MAXS = 16383| - Maximum value that the short datatype can store.
+		\item[--] \spverb|const ushort M_MAX16U = const ushort M_MAXUS = 32767| - Maximum value that the ushort datatype can store.
+		\newline
+		\item[--] \spverb|const int M_MAX32 = const int M_MAXI = 0x7fffffff| $\approx 2.1*10^9 = 2^{31}-1$ - Maximum value that the int datatype can store.
+		\item[--] \spverb|const uint M_MAX32U = const uint M_MAXUI = 0xffffffff| $\approx 4.2*10^18 = 2^{32}-1$ - Maximum value that the uint datatype can store.
+		\newline
+		\item[--] \spverb|const long M_MAX64 = const long M_MAXL = 0x7fffffffffffffff| $\approx 9.2*10^18 = 2^{63}-1$ - Maximum value that the long datatype can store.
+		\item[--] \spverb|const uint M_MAX32U = const uint M_MAXUI = 0xffffffffffffffff| $\approx 1.8*10^19 = 2^{64}-1$ - Maximum value that the ulong datatype can store.
+		\item[--] Minimum integer size constants also exist; they're in the foramt of M\_MIN\{Size\} or M\_MIN\{Initial\} (e.x M\_MINC is -127, and M\_MIN16 is -16383.)
+		
+	\end{itemize} 
+	\subsubsection{Base Conversions}
+	These are functions for manipulating bases. These DO work with decimal numbers, as well as integers. For these bases, it uses the following character set: \spverb|0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+/\\!@#$%^&*_-=;:'\"<>,?'|, along with some other characters (see mathFunctions.c). Supports bases from 2-128.
+		\begin{itemize}
+			\item[--] \spverb|decToBase(double?, int, optional string) -> string| - Converts a decimal number into base n. If the string is entered, uses a custom set of digits. also Examples:
+			\newline
+			\begin{spverbatim}
+				decToBase(2**9+45, 19); ` Returns "1A6"
+				decToBase(165,2); ` Returns "10100101";
+				decToBase(M_PI32, 3); ` Returns "10.01021101222201021100"
+			\end{spverbatim}
+			\item[--] \spverb|baseToDec(string, int) -> double128| - Converts a base n string back into base 10. When a 2nd string is entered, uses a custom set of digits. Examples:
+			\newline
+			\begin{spverbatim}
+				baseToDec("1A6", 19ld); ` Returns 557
+				baseToDec("10100101", 2ld); ` Returns 165
+				baseToDec("10.01021101222201021100", 3ld); ` Returns 3.141593.
+			\end{spverbatim}
+			\item[--] Along with decToBase() \& baseToDec(), there are several more functions that make decToBase \& baseToDec more readable:
+				\begin{itemize}
+					\item[--] \spverb|binToDec(string) -> double128 & decToBin(double128) -> string| - Functions for converting to and from binary (base 2). Uses the digits \spverb|01|.
+					\item[--] \spverb|octToDec(string) -> double128 & decToOct(double128) -> string| - Functions for converting to and from octal (base 8). Uses the digits \spverb|01234567|.	
+					\item[--] \spverb|dozToDec(string) -> double128 & decToDoz(double128) -> string| - Functions for converting to and from dozenal (base 12). Uses the digits \spverb|0123456789AB|.
+					\item[--] \spverb|hexToDec(string) -> double128 & decToHex(double128) -> string| - Functions for converting to and from hexadecimal (base 16). Uses the digits \spverb|0123456789ABCDEF|.
+					\item[--] \spverb|B64ToDec(string) -> double128 & decToB64(double128) -> string| - Functions for converting to and from base 64. Uses the base 64 digits \spverb|(0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz+/)|
+				\end{itemize}
+		\end{itemize}
+	\subsubsection{Exponents}
+	There are several functions in @math that can be used to manipulate \newline logarithms.
+		\begin{itemize}
+			\item[--] \spverb|log(double?, double?) -> double?| - Computes $\log_{arg1}(arg0)$.
+			\item[--] \spverb|log2(double?) -> double?| - Computes $\log_{2}(arg0)$.
+			\item[--] \spverb|log10(double?) -> double?| - Computes $\log_{10}(arg0)$.
+			\item[--] \spverb|ln(double?) -> double?| - Computes $\ln(arg0)$ ($\log_{e}(arg0)$).
+		\end{itemize}
+		Logarithm Examples:
+		\begin{spverbatim}
+			log(128, 4) - Returns 3.5. 4^3.5 = 128.
+			log2(256.25) - Returns 8.001.
+			log10(100) - Returns 2
+			ln(M_E**5); - Returns 5 
+		\end{spverbatim}
+		\newpage
+	\subsubsection{Geometry \& Trigonometry}
+	There are several functions in @math that are used to do geometry.
+		\begin{itemize}
+			\item[--] There's two functions for radian-degrees conversion: \spverb|dToR(double?) & rToD(double?) -> double?|. dToR converts from degrees to radians, and rToD converts from radians to degrees. Examples:
+				
+				
+				\begin{spverbatim}
+					dToR(45); - 0.785398
+					rToD(0.785398) - 45
+				\end{spverbatim}
+			\newline
+			\item[--] There's several functions in Aurum for dealing with trignometric functions. Due to the amount of these, they will only have short descriptions \& no usage examples. Functions ending in "d" take their argument in as degrees, not radians. Functions with an "h" at the end are \newline hyperbolic functions. Functions starting with an "a" are inverse \newline functions.
+			\begin{itemize}
+				\item[--] \spverb|sin(double?), sind(double?) -> double?| - Computes $\sin\theta$.
+				\item[--] \spverb|sinh(double?), sinhd(double?) -> double?| - Computes $\sinh\theta$.
+				\item[--] \spverb|asin(double?), asind(double?) -> double?| - Computes $\arcsin\theta$. Throws an error for values outside of the range $[1,-1]$.
+				\item[--] \spverb|asinh(double?), asinhd(double?) -> double?| - Computes $\sinh^{-1}\theta$.
+				\newline
+				\item[--] \spverb|cos(double?), cosd(double?) -> double?| - Computes $\cos\theta$.
+				\item[--] \spverb|cosh(double?), coshd(double?) -> double?| - Computes $\cosh\theta$.
+				\item[--] \spverb|acos(double?), acosd(double?) -> double?| - Computes $\arccos\theta$. Throws an error for values outsode of the range $[1,-1]$
+				\item[--] \spverb|acosh(double?), acoshd(double?) -> double?| - Computes $\cosh^{-1}\theta$. Throws an error for values outside the range $[1, \infty)$.	
+				\newline
+				\item[--] \spverb|tan(double?), tand(double?) -> double?| - Computes $\tan\theta$. Throws an error for od multiples of $\frac{\pi}{2}$
+				\item[--] \spverb|tanh(double?), tanhd(double?) -> double?| - Computes $\tanh\theta$.
+				\item[--] \spverb|atan(double?), atand(double?) -> double?| - Computes $\arctan\theta$.
+				\item[--] \spverb|atanh(double?), atanhd(double?) -> double?| - Computes $\tanh^{-1}\theta$.
+				\newline
+				\item[--] \spverb|cot(double?), cotd(double?) -> double?| - Computes $\cot\theta$. Throws an error for odd multiples of $\frac{\pi}{2}$. (90 for cotd)
+				\item[--] \spverb|coth(double?), cothd(double?) -> double?| - Computes $\coth\theta$. Throws an error for 0.
+				\item[--] \spverb|acot(double?), acotd(double?) -> double?| - Computes $\cot^{-1}\theta$.
+				\item[--] \spverb|acoth(double?), acothd(double?) -> double?| - Computes $\coth^{-1}\theta$. Throws an error for values outside the range $[-\infty, -1]\cup[1,\infty]$	
+				\newline
+				\item[--] \spverb|sec(double?), secd(double?) -> double?| - Computes $\sec\theta$. Throws an error for odd multiples of $\frac{\pi}{2}$ (90 for secd)
+				\item[--] \spverb|sech(double?), sechd(double?) -> double?| - Computes $sech\theta$.
+				\item[--] \spverb|asec(double?), asecd(double?) -> double?| - Computes $\sec^{-1}\theta$. Throws an error for values outside of the range $(-\infty, -1]\cup[1,\infty)$
+				\item[--] \spverb|asech(double?), asechd(double?) -> double?| - Computes $sech^{-1}\theta$. Throws an error for values outside of the range $[-1, 1]$, or if the value is 0.
+				\newline
+				\item[--] \spverb|csc(double?), cscd(double?) -> double?| - Computes $\csc\theta$. Throws an error for odd multiples of $\pi$ (180 for cscd).
+				\item[--] \spverb|csch(double?), cschd(double?) -> double?| - Computes $csch\theta$. Throws an error for 0.
+				\item[--] \spverb|acsc(double?), acscd(double?) -> double?| - Computes $\csc^{-1}\theta$. Throws an error for values outside of the range $(-\infty, -1]\cup[1,\inf)$
+				\item[--] \spverb|acsch(double?), acschd(double?) -> double?| - Computes $csch^{-1}\theta$. Throws an error for zero.
+			\end{itemize}
+			\newpage
+			\item[--] Along with trigometric ratios, Aurum also has two functions that implement the Pythagorean Theorem ($a^2 + b^2 = c^2$).
+			\begin{itemize}
+				\item[--] \spverb|hypot(double?, double?) -> double?| - Computes the hypotenuse of a triangle using two side lengths. \spverb|c = \sqrt{a^2 + b^2}|. Example:
+
+				
+				\begin{spverbatim}
+					hypot(3,4) - Returns 5.
+				\end{spverbatim}
+				\newline
+				\item[--] \spverb|sidel(double? double?) -> double?| - When a triangle's sidelength \& hypotenuse are known, sidel() returns the length of the other side. arg0 is the side length, arg1 is the hypotenuse. Example:
+				\begin{spverbatim}
+					sidel(4,5) - Returns 3.
+					sidel(3,5) - Returns 4.
+				\end{spverbatim}
+			\end{itemize}
+		\end{itemize}  
+	\subsubsection{Numbers}
+	There's several functions that relate to a number's properties.
+	\begin{itemize}
+		\item[--] \spverb|gcd(int?, int?) -> int?| - Computes the greatest common factor of two numbers:
+		\item[--] \spverb|lcm(int?, int?) -> int?| - Computes the least common multiple of two numbers.
+		\begin{spverbatim}
+			gcd(54,24) - Returns 6.
+			lcm(54,24) - Returns 216.
+		\end{spverbatim}
+		\newpage
+		\item[--] \spverb|isPrime(int?) -> bool| - Returns if a number is prime or not. Example:
+		
+		
+		\begin{spverbatim}
+			for (int i = 0; i < 20; i++) {
+				if (isPrime(i)) {
+					print("%i\n", i); - Prints "1 2 3 5 7 11 13 17 19".
+				}
+			}
+		\end{spverbatim}
+		\newline
+		\item[--] \spverb|primeFac(int?) -> int?[]| - Returns the prime factors of a number. If the number is prime, 1 isn't included. Any exponents in the prime factorization are split. Example:
+		
+		
+		\begin{spverbatim}
+			primeFac(5896) - Returns [2,2,2,11,67].
+		\end{spverbatim}
+		\newline
+	\end{itemize}
+	
+	\subsubsection{Statistics \& Array Operations}
+	There are several functions that help with statistics in Aurum.
+	\begin{itemize}
+			\item[--] \spverb|array_sum() & array_prod() -> double? | - Computes the sum (or product) of an number array. If a non-number element is found, does throw an error. Example:
+			
+			
+			\begin{spverbatim}
+				int[] arr = [2,4,6,8,10];
+				arr.prod(); ` 3840
+				arr.sum(); ` 30
+			\end{spverbatim}
+			\newline
+			\item[--] \spverb|array_mean() -> double?| - Computes the mean (average) of an array. If a non-number element is found, throws an error.
+			
+			
+			\begin{spverbatim}
+				int[] arr = [2,4,6,8,10];
+				arr.mean() ` 15
+			\end{spverbatim}
+			\newline
+			\item[--] \spverb|array_median() -> double?| - Computes the median of an array. If a non-number element is found, throws an error.
+			
+			
+			\begin{spverbatim}
+				int[] arr = [2,4,6,8,10];
+				arr.median() ` 7
+			\end{spverbatim}
+			\newline
+			\item[--] \spverb|array_quantiles(int n) -> double?[]| - Computes the nQuantile for an array of numbers. If a non-number element is found, throws an error. Example:
+			\begin{spverbatim}
+				` Computes the deciles of a random 20-item set:
+				long[] arr = [0];
+				srand(time());
+				for (int i = 0; i < 20; i++) {
+					arr.append(randL(0,100));
+				}
+				print("\n%a", arr);
+				print("\n%a, arr.quantiles(10));
+			\end{spverbatim}
+	\end{itemize}
+	\subsection{@cplx Library}
+	\label{sec:cplx}
+	Along with having functions for the Real numbers, Aurum also has several functions for complex numbers. To use these functions, having @math imported is required.
+	\subsubsection{cplxNum Struct}
+	To declare a new complex number, use the cplxNum struct, listed below:
+	\newline
+	
+	\begin{spverbatim}
+		struct cplxNum {
+			double128 a;
+			double128 b;
+			function cplxNum(double128 a, double128 b) -> cplxNum {
+				this.a = a;
+				this.b = b;
+				return this;
+			}
+			` Several functions have been cut out from this definition (see below).
+		}
+		";	
+	\end{spverbatim}
+	Any function in this library that returns a real number will return a double128, as that's what cplxNum uses.
+	Below are functions called by using the cplxNum struct.
+	\begin{itemize}
+		\item[--] \spverb|cplxNum_cabs() -> double128| - Returns a complex number's distance from 0.
+		\item[--] \spverb|cplxNum_op_len() -> double128| - Operator overload for \spverb|#|. Same as calling cplxNum.cabs().
+		\begin{spverbatim}
+			cplxNum a = cplxNum(19ld, 23ld);
+			a.cabs() ` 28.31
+			#a ` 28.31
+		\end{spverbatim}
+		\item[--] \spverb|cplxNum_carg() -> double128| - Returns a complex number's argument. (Angle between positive real axis \& x.)
+		\begin{spverbatim}
+			cplxNum a = cplxNum(-3, -1.1);
+			a.carg(); ` 0.35 radians
+		\end{spverbatim}
+		\item[--] \spverb|cplxNum_imag(), cplxNum_real() -> double128| - Return a complex number's real or imaginary parts.
+		\newline
+		\begin{spverbatim}
+			cplxNum a = cplxNum(19ld, 23ld);
+			a.real(); ` 19
+			a.a ` 19; a.real() = a.a
+			a.imag(); ` 23
+			a.b; ` 23; a.imag() = a.b
+		\end{spverbatim}
+		\newline
+		\item[--] \spverb|cplxNum_toPolarString() -> string| - Converts a complex number to the form $re^{i\theta}$.
+		\item[--] \spverb|cplxNum_toCartesianString() -> string| - Converts a complex number to the form $a+bi$.
+		\newline
+		\begin{spverbatim}
+			cplxNum a = cplxNum(19ld, 23ld);
+			a.toPolarString(); ` 29.83^i0.88
+			a.toCartesianString(); ` 19+23i
+		\end{spverbatim}
+		\item[--] \spverb|cplxNum_conj() -> cplxNum| - Takes a complex number's conjugate (negates the imaginary part).
+		\item[--] \spverb|cplxNum_op_add(cplxNum) -> cplxNum| - Addition overload operator. Adds two complex numbers.
+		\item[--] \spverb|cplxNum_op_sub(cplxNum) -> cplxNum| - Subtraction overload operator. Subtracts two complex numbers.
+		\item[--] \spverb|cplxNum_op_mul(cplxNum) -> cplxNum| - Multiplication overload operator. Multiplies two complex numbers.
+		\item[--] \spverb|cplxNum_op_exp(cplxNum) -> cplxNum| - Exponentiation overload operator. Exponentiates two complex numbers. Same thing as calling cpow().
+		\newline
+		\begin{spverbatim}
+			cplxNum a = cplxNum(2,4);
+			cplxNum b = cplxNum(3,5);
+			a.op_add(b); ` 5+9i
+			a.op_sub(b); ` -1-i
+			a.op_mul(b); ` -14+22i
+		\end{spverbatim}
+	\end{itemize}
+	\subsubsection{Complex Exponents}
+	In @cplx, there are several functions for dealing with complex exponents \& logarithms.
+	\begin{itemize}
+		\item[--] \spverb|cpow(cplxNum, cplxNum) -> cplxNum| - Returns ${arg0}^{arg1}$.
+		\item[--] \spverb|cexp(cplxNum) -> cplxNum| - Returns $e^{arg0}$.
+		\item[--] \spverb|ctxp(cplxNum) -> cplxNum| - Returns $2^{arg0}$.
+		\item[--] \spverb|clog(cplxNum, cplxNum) -> cplxNum| - Returns $\log_{arg1}(arg0)$.
+		\item[--] \spverb|cln(cplxNum) -> cplxNum| - Returns $\ln{arg0}$ ($\log_{e}(arg0)$).
+		\item[--] \spverb|clog2(cplxNum) -> cplxNum| - Returns $\log_{2}(arg0)$.
+		\item[--] \spverb|clog10(cplxNum) -> cplxNum| - Returns $\log_{10}(arg0)$.
+		
+		\begin{spverbatim}
+			cplxNum a = cplxNum(10ld, 30ld);
+			cplxNum b = cplxNum(0, 5ld);
+			cpow(a, b) ` ~0 - 0.00193i
+			clog(a, b) ` 1.487-0.675224i
+		\end{spverbatim}
+	\end{itemize}
+	
+	\subsubsection{Complex Trigonometry}
+	These are essentially just the trigonometric functions from @math expanded to the $\mathbb{C}$ domain.
+	\begin{itemize}
+		\item[--] \spverb|csin(cplxNum) -> cplxNum| - Computes complex $\sin{z}$
+		\item[--] \spverb|ccos(cplxNum) -> cplxNum| - Computes complex $\cos{z}$
+		\item[--] \spverb|ctan(cplxNum) -> cplxNum| - Computes complex $\tan{z}$
+		\item[--] \spverb|csec(cplxNum) -> cplxNum| - Computes complex $\sec{z}$
+		\item[--] \spverb|ccot(cplxNum) -> cplxNum| - Computes complex $\cot{z}$
+		\item[--] \spverb|ccsc(cplxNum) -> cplxNum| - Computes complex $\csc{z}$
+		\item[--] \spverb|casin(cplxNum) -> cplxNum| - Computes complex $\arcsin{z}$
+		\item[--] \spverb|cacos(cplxNum) -> cplxNum| - Computes complex $\arccos{z}$
+		\item[--] \spverb|catan(cplxNum) -> cplxNum| - Computes complex $\arctan{z}$
+		\item[--] \spverb|casec(cplxNum) -> cplxNum| - Computes complex $\sec^{-1}(z)$
+		\item[--] \spverb|cacot(cplxNum) -> cplxNum| - Computes complex $\cot^{-1}(z)$
+		\item[--] \spverb|cacsc(cplxNum) -> cplxNum| - Computes complex $\csc^{-1}(z)$
+		\newpage
+		\item[--] \spverb|csin(cplxNum) -> cplxNum| - Computes complex $\sinh{z}$
+		\item[--] \spverb|ccos(cplxNum) -> cplxNum| - Computes complex $\cosh{z}$
+		\item[--] \spverb|ctan(cplxNum) -> cplxNum| - Computes complex $\tanh{z}$
+		\item[--] \spverb|csec(cplxNum) -> cplxNum| - Computes complex $sech(z)$
+		\item[--] \spverb|ccot(cplxNum) -> cplxNum| - Computes complex $coth(z)$
+		\item[--] \spverb|ccsc(cplxNum) -> cplxNum| - Computes complex $csch{z}$
+		\item[--] \spverb|casin(cplxNum) -> cplxNum| - Computes complex $\sinh^{-1}{z}$
+		\item[--] \spverb|cacos(cplxNum) -> cplxNum| - Computes complex $\cosh^{-1}{z}$
+		\item[--] \spverb|catan(cplxNum) -> cplxNum| - Computes complex $\tan^{-1}{z}$
+		\item[--] \spverb|casec(cplxNum) -> cplxNum| - Computes complex $sech^{-1}(z)$
+		\item[--] \spverb|cacot(cplxNum) -> cplxNum| - Computes complex $coth^{-1}(z)$
+		\item[--] \spverb|cacsc(cplxNum) -> cplxNum| - Computes complex $csch^{-1}(z)$
+		
+	\end{itemize}
+	\subsection{@lalg Library}
+	This library has several functions \& structs for dealing with vectors \& matrices. This, like @cplx, requires @math to be imported to use.
+	\subsubsection{Vectors}
+	Below are the vector2, vector3, \& vectorN structs.
+	\begin{spverbatim}
+		struct vector2 {
+			double128 x;
+			double128 y;
+			function vector2(double128 x, double128 y) -> vector2 {
+				this.x = x;
+				this.y = y;
+				return this;
+			}
+		}
+		struct vector3 {
+			double128 x;
+			double128 y;
+			double128 z;
+			function vector3(double128 x, double128 y, double128 z) -> vector3 {
+				this.x = x;
+				this.y = y;
+				this.z = z;
+				return this;
+		}
+		struct vectorN {
+			double128[] values;
+			function vectorN(double128[] values) -> vectorN {
+				this.values = values;
+				return this;
+			}
+		}
+	\end{spverbatim}
+	For vectors, there are also three additional constants used for referring to axes. Most of these functions won't have examples associated with them, as they are quite simple.
+	\begin{spverbatim}
+		const int xAxis = 1;
+		const int yAxis = 2;
+		const int zAxis = 3;
+	\end{spverbatim}
+	Here are the functions for dealing with vectors.
+	\begin{itemize}
+		\item[--] \spverb|vector?_magnitude()| - Returns the magnitude of a vector.
+		\item[--] \spverb|vector?_dotProduct(vector?)| - Computes the dot product of a vector.
+		\item[--] \spverb|vector2_crossProduct(vector2) -> vector2, vector3_crossProduct(vector3) -> vector3| - Computes the cross product of a vector.
+		\item[--] \spverb|vector?_angle(vector?) -> double128| - Returns the angle between two vectors.
+		\item[--] \spverb|vector?_round(int) -> double128| - Returns a copy of the vector, rounded to n digits.
+		\item[--] \spverb|vector?_normalize() -> vector?| - Normalizes a vector (Makes the vector's magnitude 1).
+		\item[--] \spverb|vector?_normalizeN(double128) -> vector?| - Makes a vector's magnitude n.
+		\item[--] \spverb|vector2_rotate(double128) -> vector2| - Rotates a vector by $\theta$ counterclockwise around the origin.
+		\item[--] \spverb|vector3_rotate(int, double128) -> vector3| - Rotates a vector around an axis. 1st argument has to be one of the axis constants.
+		\item[--] \spverb|vector3_rotateByVector3(int[], vector3) -> vector3| - Rotates a vector in the following order: arg0\_0, arg0\_1, arg0\_2. All elements of arg0 have to be axes. The following code rotates a vector $\pi$ radians around the y axis, $\pi$ radians around the z axis, then $\frac{\pi}{2}$ radians around the x axis:
+		
+		
+		\begin{spverbatim}
+			vector3 n = vector3(5ld, 6ld, 7ld);
+			n.rotateByVector3(vector3(M_PI32/2ld, M_PI32, M_PI32), [yAxis, zAxis, xAxis]).toString();
+		\end{spverbatim}
+		\item[--] \spverb|vector?_toString() -> string| - Converts a vector to a string in the following format: <x, y, z, w, ... >.
+		\item[--] \spverb|vector?_op_add(vector?) -> vector?| - Addition operator overload; Adds two vectors.
+		\item[--] \spverb|vector?_op_sub(vector?) -> vector?| - Subtraction operator overload; Subtracts two vectors.
+		\item[--] \spverb|vector?_op_neg(vector?) -> vector?| - Negation operator overload; Rotates the vector by 180 degrees on all axes.
+		\item[--] \spverb|vector?_scalarMult(double128) -> vector?| - Multiplies all elements of the vector by n.
+		\item[--] \spverb|vector?_op_len -> double128| - \spverb|#| Operator Overload. Returns the magnitude of a vector.
+		\item[--] \spverb|vectorN_dims() -> int| - Returns the amount of dimensions in a vectorN.
+	\end{itemize}
+	\newpage
+	\subsubsection{Matrices}
+	In addition to being able to deal with vectors, @lalg also has its own matrix struct:
+	
+	
+	\begin{spverbatim}
+		struct mtrx {
+			double128[] data; ` Multidimensional array
+			int rows;
+			int cols;
+			function mtrx(double128[] data, int rows, int cols) -> mtrx {
+				this.data = data;
+				this.rows = rows;
+				this.cols = cols;
+				return this;
+			}
+		}
+	\end{spverbatim}
+	Below is an example of making a 2 row by 3 column matrix, then accessing element at matrix index $newMatrix_{12}$:
+	\begin{spverbatim}
+		mtrx newMatrix = mtrx([[1ld,2ld,3ld],[4ld,5ld,6ld]], 2, 3);
+		newMatrix[0][1]; ` Accesses matrix index 12.
+	\end{spverbatim}
+	Below is the functions that are used when dealing with matrices:
+	\begin{itemize}
+		\item[--] \spverb|doubleMtrxFromDims(int, int) -> double128[]| - Makes a $arg0 x arg1$ multidimensional double128[]. All entries are 0.
+		\item[--] \spverb|identityMtrx(int) -> mtrx| - Makes the identity matrix of dimension arg0. (The identity matrix is a matrix where the diagonal is 1, and the rest are zeroes.)
+		\item[--] \spverb|mtrx_det() -> double128| - Gets the determinant of a matrix. Throws an error if the matrix isn't square.
+		\item[--] \spverb|mtrx_toVector() -> vectorN| - Converts a $1 x N$ or $N x 1$ matrix into a vectorN.
+		\item[--] \spverb|mtrx_toString() -> string| - Converts a matrix into a string in the following format:
+		\begin{spverbatim}
+			[[11, 12, 13],
+			 [14, 15, 16]]
+		\end{spverbatim}
+		\item[--] \spverb|mtrx_mult(mtrx) -> mtrx| - Multiplication operator overload; Multiplies two matrices. If they are unable to be multiplied, throws an error.
+		\item[--] \spverb|mtrx_round(int) -> mtrx| - Returns a copy of the 1st matrix rounded to n places.
+		\item[--] \spverb|mtrx_scalarMult(double128) -> mtrx| - Multiplies elements of the matrix by n.
+		\item[--] \spverb|mtrx_op_add(mtrx) -> mtrx| - Addition operator overload; Adds two matrices
+		\item[--] \spverb|mtrx_op_sub(mtrx) -> mtrx| - Subtraction operator overload; Subtracts two matrices.
+		\item[--] \spverb|mtrx_op_mul(auto) -> mtrx| - Multiplication operator overload; If the parameter passed in is a scalar value, calls mtrx.scalarMult. Otherwise, does mtrx\_mult.
+	\end{itemize}
+	\subsection{@time Library}
+	These are functions for dealing with time.
+	\begin{itemize}
+		\item[--] \spverb|time() -> long| - Returns the amount of seconds since January 1st, 1970 (The Unix Epoch).
+		\label{misc:timeld}
+		\item[--] \spverb|timeld() -> double128| - Returns the amount of seconds since January 1st, 1970, including fractional parts of seconds.
+		\item[--] \spverb|clock() -> long| - Returns the clock cycle of the program (includes the entire interpretation process too)
+		\item[--] \spverb|sleep(int) -> void| - Stops execution of the program for arg0 milliseconds.
+		\item[--] \spverb|getUTC() & toUTC(long) -> UTCTime| - These both are functions for handling UTC time. getUTC() gets the current time, and converts it to a UTCTime struct. getUTC() does include the current milliseconds, but toUTC(long) does not. Both of them use the UTCTime struct, shown here:
+		
+		
+		\begin{spverbatim}
+			struct UTCTime {
+				int ms;
+				int second;
+				int minute;
+				int hour;
+				int mday;
+				int month;
+				int year;
+				int wday;
+				int yday;
+				bool isdst;
+			};";
+		\end{spverbatim}
+	\end{itemize}
+	\subsection{@rand Library}
+	The @rand library provided functions for random number generations, permutations/combinations, \& factorials.
+	\subsubsection{Random Number Generation}
+		\begin{itemize}
+			\item[--] \spverb|srand(long) -> void| - Seeds the random number generator. This has to be called before any random number generation. A good way to ensure inconsistent random numbers are generated is by calling \spverb|srand(time(NULL))|, if you have @time imported.
+			\item[--] \spverb|rand() -> long| - Returns a random integer between 0 \& 32767.
+			\item[--] \spverb|randL(long, long) -> long| - Generates a random long between the range $[minimum, maximum]$
+			\item[--] \spverb|randLD(double128, double128) -> double128| - Generates a random double128 between the range $[minimum, maximum]$.
+		\end{itemize}
+	\subsubsection{Factorial \& Gamma Functions}
+		\begin{itemize}
+			\item[--] \spverb|factorial(long) -> long| - Computes the basic factorial function. Domain is $[n | n \in \mathbb{N}]$
+			\item[--] \spverb|gamma(double128) -> double128| - Computes the gamma function. Essentially, it's the factorial function extended to all real numbers. Domain is $[n | n \in \mathbb{R}]$
+			\item[--] \spverb|lgamma(double128) -> double128| - Computes $\ln(|\Gamma(n))|$.
+		\end{itemize}
+	\subsubsection{Permutations, Combinations, and Array.Choose()}
+		\begin{itemize}
+			\item[--] \spverb|permutations(int, int, bool)| - Computes the amount of permutations in a set of size arg0, choosing arg1 items, and if repetition is allowed.
+			\item[--] \spverb|combinations(int, int, bool)| - Computes the amount of combinations in a set of size arg0, choosing arg1 items, and if repetition is allowed.
+			\item[--] \spverb|array_choose() -> any| - Returns \spverb|array[randL(0, #array)]|.
+		\end{itemize}
+	\subsection{@io Library}
+	@io includes several functions for manipulating files. Only works with windows systems.
+	\subsubsection{Opening Files}
+		In the @io library, the file struct is used often, so here is the definition for the file struct:
+		
+		
+		\begin{spverbatim}
+			const int FM_READ = 1i; ` Only allows reading of the file. Doesn't create the file if it's not there.
+			const int FM_WRITE = 2i; ` Overwrites the file, and only allows writing. Creates the file if it's not there.
+			const int FM_APPEND = 3i; ` Doesn't overwrite the file. Sets the pos attribute of the file to the last character. Allows writing to the end of the file.
+			const int FM_READWRITE = 4i; ` Sets pos attribute to the start of the file. Allows reading/writing.
+			const int FM_READOVERWRITE = 5i; ` Overwrites the file, and allows reading and writing. Sets the pos to zero. If the file doesn't exist, create it. 
+			const int FM_READAPPEND = 6i; ` Doesn't overwrite the file, and allows reading and appending. Sets the pos to the last character.
+			const int EOF = -1i;
+			struct file {
+				long ptr;
+				long pos;
+				int mode;
+				string name;
+			}
+			
+		\end{spverbatim}
+		\begin{itemize}
+			\item[--] \spverb|fopen(string, int) -> file| - Opens a file using the arg0 as the path. Constructs a file struct with the data made. file.ptr is a pointer to the file struct inside of the VM. Do not change file.ptr unless you know what you're doing. Arg1 is the mode that you are opening the file with.
+			\item[--] \spverb|file_close() -> void| - Closes the file. Always use this when you are done using a file. Sets file.ptr to 0.
+		\end{itemize}
+	\subsubsection{Reading Files}
+		\begin{itemize}
+			\item[--] \spverb|file_getChar() -> int| - Gets the char at file.pos, and advance it 1. If the position reaches the end of the file, return EOF (-1).
+			\item[--] \spverb|file_getStr(int) -> string| - Reads arg0 characters and returns it as a string. Advances file.pos by that amount.
+			\item[--] \spverb|file_getLine() -> string| - Reads until it encounters a newline character.
+			\item[--] \spverb|file_read() -> string| - Reads the entire file. Doesn't modify file.pos.
+			\item[--] \spverb|file_size() -> long| - Gets a file's size in bytes.
+		\end{itemize}
+	\subsubsection{Modifying Files}
+		\begin{itemize}
+			\item[--] \spverb|file_putChar(char) -> void| - Puts 1 character into the file, and advances pos by 1.
+			\item[--] \spverb|file_putStr(string) -> void| - Puts an entire string into the file, and advances pos by however long that string was.
+			\item[--] \spverb|file_writef(string, *) -> void| - Calls formats() with the arguments provided, and writes the string into it. Example:
+			
+			\begin{spverbatim}
+				file n = fopen(path, "w");
+				n.writef("%i+%i=%i", 1, 1, 2); ` This writes "1+1=2" to the file.
+				n.close();
+			\end{spverbatim}
+			\newline
+			\item[--] \spverb|file_rename(string) -> void| - Renames the file. This does change file.ptr.
+			\item[--] \spverb|file_delete() -> void| - Closes, then deletes, the file. Sets file.ptr to 0.
+		\end{itemize}
+	\subsubsection{Directories}
+		\begin{itemize}
+			\item[--] \spverb|createDirectory(string) -> void| - Creates a directory.
+			\item[--] \spverb|deleteDirectory(string) -> void| - Deletes a directory.
+			\item[--] \spverb|renameDirectory(string, string) -> void| - Renames a directory from arg0 to arg1.
+			\item[--] \spverb|getAllFiles(string) -> directorySearch| - Grabs all file names \& folder names from a directory, and returns them as a directorySearch.
+			
+			
+			\begin{spverbatim}
+				struct directorySearch {
+					string[] files;
+					string[] childDirs;
+				}
+			\end{spverbatim}
+		\end{itemize}
+	
+	\newpage
+	\section{AurX Executable Format}
+	\label{misc:aurx}
+	\subsubsection{AurX Format Usage}
+	AurX is a file format standard for executable Aurum files. Essentially, it enables bytecode to be saved in order to share programs easier, and to save time when repeatedly running programs. To use it, do \spverb|aurum file.aur -x|. To run an AurX file, do \spverb|aurum file.aurx|.
+	After bytecoding, if -x is passed in, it will convert the bytecode into an AurX file with the same name as the file that ran. Other files that were imported will also be included in the AurX file. Each component of the bytecode is stored in different ways. Below is how function declarations are stored:
+	\newline
+	\subsubsection{AurX Format Standard}
+	\begin{tabular}{|p{1cm}|p{2cm}|p{10cm}|p{2cm}|}
+		\hline
+		Bytes:&Type&Data&Total\\
+		\hline
+		1&int8&Length of the function's name&1\\
+		\hline
+		1&int8&Function arguments&2\\
+		\hline
+		1&bool&If the function is user-made or system.&3\\
+		\hline
+		1&int8&Length of the return struct. 0 if it's a primitive type.&4\\
+		\hline
+		x&string&Function's return struct&4+x\\
+		\hline
+	\end{tabular}
+	\newline
+	Below is how global variables are stored:
+	\newline
+	\begin{tabular}{|p{1cm}|p{2cm}|p{10cm}|p{2cm}|}
+		\hline
+		Bytes:&Type&Data&Total\\
+		\hline
+		1&int8&Length of variable name&1\\
+		\hline
+		x&string&Variable name&1+x\\
+		\hline
+		1&int8&Variable type (Number, array, or struct, NOT the actual datatype)&x+2\\
+		\hline
+		1&bool&If the variable is an array&x+3\\
+		\hline
+		1&bool&If the variable is a constant&x+4\\
+		\hline
+		1&int8&Length of the variable's struct type. 0 if it's a primitive type.&x+5\\
+		\hline
+		y&string&Variable's struct type.&x+y+5\\
+		\hline
+	\end{tabular}
+	\newline
+	Below is how numeric constants are stored:
+	\newline
+	\begin{tabular}{|p{1cm}|p{2cm}|p{10cm}|p{2cm}|}
+		\hline
+		Bytes:&Type&Data&Total\\
+		\hline
+		1&int8&Constant type (Number, Array, or struct); Here it's a constant of 0, since it's a number.&1\\
+		\hline
+		32&Generic Number Struct&Stores the number value&33\\
+		\hline
+	\end{tabular} 
+	\newline 
+	Below is how array constants are stored:
+	\newline
+	\begin{tabular}{|p{1cm}|p{2cm}|p{10cm}|p{2cm}|}
+		\hline
+		Bytes:&Type&Data&Total\\
+		\hline
+		1&int8&Constant type (Number, array, or struct); here it's a constant of 1, since it's an array.&1\\
+		\hline 
+		1&int8&Array type (Character array, number array, or other). This is used within the VM to distinguish between number arrays \& strings.&2\\
+		\hline 
+		4&int32&Amount of elements in the array&6\\
+		\hline 
+		x&N/A&Member elements of the array. Stored in the same way as arrays \& numbers are. &6+x\\
+		\hline
+	\end{tabular} 
+	\newline
+	Below is how struct definitions are stored:
+	\newline
+	\begin{tabular}{|p{1cm}|p{2cm}|p{10cm}|p{2cm}|}
+		\hline
+		Bytes:&Type&Data&Total\\
+		\hline
+		1&int8&Length of the struct's name&1\\
+		\hline 
+		x&string&Struct's name&1+x\\
+		\hline 
+		1&int8&Amount of fields the struct has&2+x\\
+		\hline 
+		1+y&string&Field names of the struct. y is the amount of characters, and the 1st byte of this is the amount of characters the name is.&3+x+y\\
+		\hline
+		(4 OR 5+z)*w&StructType&The type of a struct's field. w is the amount of fields in the struct. If the struct's field type is another struct, then it uses the 5+z size, otherwise it uses 4.&3+x+y+((4 OR 5+z)*w)\\
+		\hline
+	\end{tabular}
+	\newline 
+	Below is how instruction-chunks are stored:
+	\newline
+	\begin{tabular}{|p{1cm}|p{2cm}|p{10cm}|p{2cm}|}
+		\hline
+		Bytes:&Type&Data&Total\\
+		\hline
+		4&int32&Amount of instructions in the chunk&1\\
+		\hline 
+		1&int8&Length of the chunk's name&5\\
+		\hline 
+		x&string&The chunk's name&5+x\\
+		\hline 
+		(1+(0---2))*y&instruction[]&The list of instructions in the chunk. Each instruction has either 0, 1, or 2 arguments, and y is the total amount of instructions.&5+x+(1+(0---2)*y).\\
+		\hline 
+	\end{tabular}
+	\newpage
+	\label{sec:future}
+	\section{Planned additions to the Aurum Standard}
+	\begin{itemize}
+		\item[--] Speed optimizations --- Despite the improvements, the language is still kind of slow. (Still much slower than python, even)
+		\item[--] Better operator overloading --- Make things like (a+b).memberFunc() possible.
+		\item[--] Better function pointers --- Make things like n().a possible.
+		\item[--] 16, 32, 64 bit strings --- These would be in a new @wstr library.
+		\item[--] Application library --- @apl would allow the development of windows-based applications.
+		\item[--] Better localization --- Right now, Aurum is only really well localized for Windows 1252 ASCII.
+	\end{itemize}
+	
+	
+	
+	
+	
+	
+	
+\end{document}

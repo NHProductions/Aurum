@@ -188,12 +188,19 @@ static const bcFunction defaultFunctions[] = {
     {.name = "string_replace", .argc = 3, .returnStruct = "string"}, // X
     {.name = "string_eqSplit", .argc = 2, .returnStruct = "array"}, // X
     {.name = "string_nSplit", .argc = 2, .returnStruct = "array"}, // X
+    {.name = "string_op_add", .argc = 2, .returnStruct = "string"},
+    {.name = "string_op_len", .argc = 1, .returnStruct = NULL},
+    {.name = "string_op_eq", .argc = 2, .returnStruct = NULL},
     {.name = "formats", .argc = 2, .returnStruct = "string"},
     // Error-Handling
     {.name = "throw", .argc = 1, .returnStruct = NULL},
     {.name = "exit", .argc = 0, .returnStruct = NULL},
-
+    // Typeof
     {.name = "typeof", .argc = 1, .returnStruct = "string"},
+    // Console
+    {.name = "clrcon", .argc = 0, .returnStruct = NULL},
+    {.name = "dimcon", .argc = 0, .returnStruct = "array"},
+    {.name = "popcon", .argc = 2, .returnStruct = NULL},
     {.name = "", .argc = -1} // Terminator
 };
 

@@ -1069,7 +1069,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
                         if (!isNumArr) {free(converted); break;}
                         char* arrc = charArrToStr(converted, tv->value.av.len);
                         if (arrc == NULL) continue;
-                        if (strncmp(arrc, currentNode->value.anyVal, strlen(currentNode->value.anyVal)) == 0 && strlen(arrc) == strlen(currentNode->value.anyVal)) {
+                        if (strcmp(arrc, currentNode->value.anyVal) == 0 && strlen(arrc) == strlen(currentNode->value.anyVal)) {
                             addUnaryInstruction(c, OP_LOAD_CONST, i, chunkIdx);
                             ;
                             return;
