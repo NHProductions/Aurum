@@ -1,9 +1,9 @@
 #ifndef WININCLUDE
 #define WININCLUDE
 
-#define isDebug false 
+#define isDebug true 
 #define isDebugX false 
-#define saveAsAurX false 
+#define saveAsAurX false  
 #define extension ".aur"
 #define executableExtension ".aurx"
 int getACP();

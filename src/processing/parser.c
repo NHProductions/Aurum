@@ -2061,7 +2061,23 @@ ASTNode* parseFunctionDeclaration(int* CI, int* nextDelim, List* tokens, ASTNode
                 }
             }
             else if (token->type == AST_IDENTIFIER) {
-                bool isComplexDatatype = false;
+                bool isComplexDatatype = identifierExists(s, token->value.nameVal).type == 3;
+                
+                if (isComplexDatatype) {
+                    paramToAppend->type = AST_COMPLEXDATATYPE;
+                    paramToAppend->value.nameVal = token->value.nameVal;
+                    ASTNode* toCheck = (ASTNode*)List_GetElement(tokens, j+1)->data;
+                    if (toCheck->type == AST_BLOCKEND) {
+                        ASTNode* arraySpec = newASTNode();
+                        arraySpec->type = AST_ARRAYACCESS;
+                        paramToAppend->left = arraySpec;
+                        j += 2;
+                    }
+                }
+                if (!isComplexDatatype) {
+                    paramToAppend->value.nameVal = token->value.nameVal;
+                }
+                /*
                 for (int i = 0; i < s->customTypes.length; i++) {
                     customType* ct = (customType*)List_GetElement(&s->customTypes, i)->data;
                     if (strcmp(ct->value.name, token->value.nameVal) == 0) {
@@ -2082,10 +2098,8 @@ ASTNode* parseFunctionDeclaration(int* CI, int* nextDelim, List* tokens, ASTNode
                         break;
                     }
 
-                }
-                if (!isComplexDatatype) {
-                    paramToAppend->value.nameVal = token->value.nameVal;
-                }
+                }*/
+                
             }
             List_AppendElement(param->children, paramToAppend);
             

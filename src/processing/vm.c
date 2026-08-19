@@ -23,6 +23,8 @@ Copies a typedValue by continuously recursing.
 */
 void freeTypedValue(typedValue* tv);
 pool* globalPool = NULL;
+bool isRunning = false;
+int windowsOpen = 0;
 typedValue* deepcopyTypedValue(typedValue* tv) {
     typedValue* toReturn = poolAlloc(globalPool);
     if (toReturn == NULL) {printf("Memory allocation error"); exit(1);}
@@ -70,10 +72,10 @@ typedValue* deepcopyTypedValue(typedValue* tv) {
             int fieldCount = tv->value.so.def->fields->length;
             typedValue** srcFields = (typedValue**)tv->value.so.fields;
             typedValue** dstFields = malloc(sizeof(typedValue*) * fieldCount);
-            toReturn->value.so.fields = dstFields;
             for (int i = 0; i < fieldCount; i++) {
                 dstFields[i] = deepcopyTypedValue(srcFields[i]);
             }
+            toReturn->value.so.fields = dstFields;
             return toReturn;
             break;
         }
@@ -318,7 +320,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, array* local
             short toCall = A->value.so.fields[0]->value.numberValue.value.sVal;
             bcFunction* bcf = (bcFunction*)getArray(vms->bc->functionIdentifiers, toCall);
             if (bcf->isSystem) {
-                systemCall(bcf, vms, currentInstruction->args[0]);
+                systemCall(bcf, vms, currentInstruction->args[0], locals);
             }
             else {
                 array* toSend = mallocArray(0);
@@ -362,7 +364,7 @@ void executeLine(virtualMachineState* vms, int chunkIdx, int* line, array* local
         case OP_CALL: {
             bcFunction* bcf = (bcFunction*)getArray(vms->bc->functionIdentifiers, currentInstruction->args[0]);
             if (bcf->isSystem) {
-                systemCall(bcf, vms, currentInstruction->args[1]);
+                systemCall(bcf, vms, currentInstruction->args[1], locals);
             }
             else {
                 array* toSend = mallocArray(0);
@@ -708,6 +710,7 @@ void executeBytecode(byteCode* bc) {
         appendArray(vms->globals, sv);
     }
     // Executes premain
+    isRunning = true;
     int premainIdx = findFuncChunkIdx(bc, "premain");
     chunk* premainChunk = (chunk*)getArray(bc->chunks, premainIdx);
     array* locals = mallocArray(0);
@@ -725,6 +728,7 @@ void executeBytecode(byteCode* bc) {
         if (i != prevIVal) {i--;}
         
     } 
+    isRunning = true;
     if (isDebug) printStack(vms);
     if (isDebug) {printf("\n%d/%d", globalPool->currentTotal, globalPool->capacity/sizeof(typedValue));}
 }

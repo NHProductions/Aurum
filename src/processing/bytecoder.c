@@ -119,6 +119,7 @@ Files to check next: bytecoder.h vm.c sysFunctions.c
 #include "../systemLibraries/complexFunctions.h"
 #include "../systemLibraries/lalgFunctions.h"
 #include "../systemLibraries/ioFunctions.h"
+#include "../systemLibraries/aplFunctions.h"
 // Globals; projectFolder is the folder in which main.aur is located, and it's used for getting other files.
 char* toExec = NULL;
 char* projectFolder = NULL;
@@ -1528,7 +1529,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
             appendArray(getInstructions(c, chunkIdx), &(toModify[i]) );
            }
            for (int i = 0; i < currentNode->children->length; i++) {
-            *(toModify[i].args) = getInstructions(c, chunkIdx)->length; // JMP n
+            (toModify[i].args)[0] = getInstructions(c, chunkIdx)->length-1; // JMP n
            }
            break;
         }
@@ -1580,7 +1581,7 @@ void toBytecode(byteCode c, ASTNode* currentNode, scopeInfo s, int chunkIdx) {
             appendArray(getInstructions(c, chunkIdx), jmpFalse);
             for (int i = 0; i < currentNode->right->children->length; i++) {
                 ASTNode* ln = (ASTNode*)List_GetElement(currentNode->right->children, i)->data;
-                toBytecode(c, ln, (scopeInfo){&BS,0, s.locals}, chunkIdx);
+                toBytecode(c, ln, (scopeInfo){&BS,jmpNum, s.locals}, chunkIdx);
             }
             addUnaryInstruction(c, OP_JUMP, jmpNum, chunkIdx);
             int ilen = getInstructions(c, chunkIdx)->length;
@@ -2002,8 +2003,12 @@ char* opToStr(Opcode o) {
         case OP_DCALL: {return "DCALL";}
         case OP_FPTR: {return "FPTR";}
         case OP_MOD: {return "MOD";}
+        case OP_BOR: {return "BITWISE OR";}
 
     }
+    char buffer[50];
+    sprintf(buffer, "UNKNOWN INSTRUCTION %d", o);
+    printf("%s", buffer);
     return "UNKNOWN INSTRUCTION";
 }
 // When given an index, gets the bcFunction* definition of the function.
@@ -2136,6 +2141,7 @@ void initStructs(ASTNode* toAppend, byteCode* c, List* imports) {
     if (hasImport(imports, "math")) doDefinitionInsertion(mathDefinitions, toAppend);
     if (hasImport(imports, "time")) doDefinitionInsertion(timeDefinitions, toAppend);
     if (hasImport(imports, "io")) doDefinitionInsertion(ioDefinitions, toAppend);
+    if (hasImport(imports, "apl")) doDefinitionInsertion(aplDefinitions, toAppend);
     doDefinitionInsertion(defaultDefinitions, toAppend);
     appendArray(c->structDefs, newDef("array"));
     appendArray(c->structDefs, newDef("string"));
@@ -2193,6 +2199,7 @@ byteCode initBytecode(List* imports) {
     if (hasImport(imports, "rand")) getFunctions(c.functionIdentifiers, randomFunctions);
     if (hasImport(imports, "cplx")) getFunctions(c.functionIdentifiers, cplxFunctions);
     if (hasImport(imports, "io")) getFunctions(c.functionIdentifiers, ioFunctions);
+    if (hasImport(imports, "apl")) getFunctions(c.functionIdentifiers, aplFunctions);
     // Both premain & main are guarenteed to have the indices of 0 & 1 respectively.
     // premain: area where globals & structs are initialized. No other things can happen.
     chunk* premain = malloc(sizeof(chunk));

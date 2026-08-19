@@ -236,3 +236,41 @@ short chunkPtr;\n\
 }\n\
 "; 
 #endif;
+/*
+
+struct window {
+long ptr;
+bool pSetForeground;
+... window info attributes ...
+
+}
+createWindow(title, style, xpos, ypos, xsize, ysize, parentWindow,) -> window - Creates a window
+
+window.setTitle(string) -> void Changes the title text
+window.show() -> void Shows the window
+window.switchTo() -> void Switches focus to the window.
+window.changePermission(string, int) -> void Changes a permission associated with the window.
+    Acceptable Params:
+    "setForeground", bool - Changes if it's allowed to set the foreground of the window.
+
+window.animate(ms, type) -> void Animates the window using one of several types.
+window.hasPopup() -> bool - If a pop-up window exists, return true. Otherwise, false.
+window.bring() -> void - Brings the window to the top.
+window.cascade() -> void - Cascades window
+window.childHasPt(x, y) -> window - Returns the first window that contains (x,y).
+window.close() -> void Closes the window & any children window.
+window.getParent() -> window - Gets the parent of the window
+window.getChildren() -> window[] - Gets the children of the window.
+window.isMinimized() -> bool - Returns if the window is minimized or not
+window.isVisible() -> bool - Returns if the window is visible
+window.move(x, y) -> void - Moves the window
+window.maximize() -> void - Maximizes the window
+window.setParent() -> void - Sets the parent window
+
+struct button {
+    long ptr;
+    
+}
+
+
+*/

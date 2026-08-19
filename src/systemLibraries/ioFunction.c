@@ -158,7 +158,7 @@ void fWrite(auFunc) {
         for (int i = 1; i < args->length; i++) {
             appendArray(toSendArgs, getArray(args, i));
         }
-        char* toWrite = sPrint(vms, "print", toSendArgs, true);
+        char* toWrite = sPrint(vms, "print", toSendArgs, locals, true);
         fwrite(toWrite, 1, strlen(toWrite), f);
         newPos += strlen(toWrite);
         free(toWrite);

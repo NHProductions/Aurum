@@ -28,6 +28,7 @@ Files to check next: mathFunction.c, complexFunctions.c, ioFunction.c, lalgFunct
 #include "randomFunctions.h"
 #include "complexFunctions.h"
 #include "ioFunctions.h"
+#include "aplFunctions.h"
 #ifdef _WIN32
     #define getcwd _getcwd
 #else 
@@ -1541,6 +1542,7 @@ void opFunc(auFunc) {
     freeTypedValue(arg2);
 }
 char* getTypeOf(typedValue* tv, bool sizeFormat) {
+    
     if (tv->valueType == TYPE_NUM) {
         switch (tv->value.numberValue.type) {
             case (NUM_BOOL): return strdup("bool");
@@ -1707,7 +1709,7 @@ bool isInFunctionRange(char* n, const bcFunction* bcf, char* start, char* end) {
     }
     return false;
 }
-void systemCall(bcFunction* bcDef, virtualMachineState* vms, int argc) {
+void systemCall(bcFunction* bcDef, virtualMachineState* vms, int argc, array* locals) {
     char* identifier = bcDef->name;
     array* args = mallocArray(0);
     for (int i = 0; i < argc; i++) {
@@ -1732,7 +1734,7 @@ void systemCall(bcFunction* bcDef, virtualMachineState* vms, int argc) {
     else if (strcmp(identifier, "string_substr") == 0) sSSubstring(auFuncCall);
     else if (strcmp(identifier, "string_leftPad") == 0 || strcmp(identifier, "string_rightPad") == 0) sSPad(auFuncCall);
     else if (strcmp(identifier, "string_replace") == 0) sSReplace(auFuncCall);
-    else if (strcmp(identifier, "string_op_add") == 0 || strcmp(identifier, "string_op_len") == 0) sStrOps(auFuncCall);
+    else if (strcmp(identifier, "string_op_add") == 0 || strcmp(identifier, "string_op_len") == 0 || strcmp(identifier, "string_op_eq") == 0) sStrOps(auFuncCall);
     else if (strcmp(identifier, "scan") == 0) sScan(auFuncCall);
     else if (strcmp(identifier, "print") == 0 || strcmp(identifier, "formats") == 0) sPrint(auFuncCall, false);
     else if (strcmp(identifier, "throw") == 0) sThrow(auFuncCall);
@@ -1766,4 +1768,9 @@ void systemCall(bcFunction* bcDef, virtualMachineState* vms, int argc) {
     else if (strcmp(identifier, "file_rename") == 0 || strcmp(identifier, "file_delete") == 0) fModify(auFuncCall);
     else if (strcmp(identifier, "file_size") == 0) fSize(auFuncCall);
     else if (isInFunctionRange(identifier, ioFunctions, "createDirectory", "getFiles")) fDirectory(auFuncCall);
+    // @apl
+    else if (isInFunctionRange(identifier, aplFunctions, "createWindow", "!endFunc")) {
+        aWindow(auFuncCall);
+    }
+
 }

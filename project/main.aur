@@ -1,17 +1,28 @@
-` This is the file that will open when you run Aurum with isDebug on.
-` The other files are example programs coded in Aurum.
+import @apl;
 import @time;
+function isMsgDestroy(wmsg wm) -> bool {
+    return wm.code == MSG_DESTROY || wm.code == MSG_CLOSE || wm.code == MSG_QUIT || wm.code == MSG_NCDESTROY || wm.code == MSG_QENDSESSION || wm.code == MSG_ENDSESSION;
+    
+}
 function main() -> void {
-    string m = "Hello World!" + "a";
-    print("%s", m);
-
-
-    print("Hello World!" + 'a');
-    print("easdf");
-    string n = "Previous Chars: ";
-    for (int i = 0; i < 5; i++) {
-        n = n + popcon(true, true);
-        sleep(1000);
+    long style = WM_OVERLAPPED | WM_CAPTION | WM_SYSMENU | WM_THICKFRAME | WM_MINIMIZEBOX | WM_MAXIMIZEBOX;
+    window n = createWindow("NewWindowClass", "New Window!", style, 0, [ 20i, 20i, 500, 500], 0);
+    n = n.init();
+    ` Required to set n.message to a function pointer. The function has to have window, code, wparam, & lparam.
+    n.show();
+    while (true) {
+        wmsg wm = getMessage();
+        if (typeof(wm) == "wmsg") {
+            if (wm.code == 256) {
+                print("%l", wm.wparam);
+                n.hide();
+                sleep(3000);
+                n.show();
+            }
+            else {
+                print("\n%ix (%i)", wm.code, wm.handled);
+            }
+            wm.handle();
+        }
     }
-    print("\n\n%s", n);
 }

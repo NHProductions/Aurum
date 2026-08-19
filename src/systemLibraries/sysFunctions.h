@@ -19,12 +19,12 @@
 #include "../processing/vm.h"
 #include "../dataStorage/num.h"
 #include "../dataStorage/array.h"
-#define auFunc virtualMachineState* vms, char* identifier, array* args
-#define auFuncCall vms, identifier, args
+#define auFunc virtualMachineState* vms, char* identifier, array* args, array* locals
+#define auFuncCall vms, identifier, args, locals
 
 char* sPrint(auFunc, bool);
 void* srealloc(void* mem, int size);
-void systemCall(bcFunction* bcDef, virtualMachineState* vms, int argc);
+void systemCall(bcFunction* bcDef, virtualMachineState* vms, int argc, array* locals);
 char* strArrToChar(typedValue* tv);
 typedValue* numToTV(num n);
 typedValue* newTVArray(int len, int type);

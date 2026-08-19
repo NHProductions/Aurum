@@ -68,7 +68,8 @@ void insertArray(array* arr, int index, void* toInsert) {
 }
 
 void* removeArray(array* arr, int index) {
-    if (index >= arr->length || index < 0) { printf("Invalid array access\n"); exit(1); }
+    if (index >= arr->length || index < 0) { 
+        printf("Invalid array access\n"); exit(1); }
     
     void* removedElement = arr->data[index]; // Save pointer to return it
     

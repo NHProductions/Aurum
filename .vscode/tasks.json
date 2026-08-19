@@ -9,6 +9,7 @@
             "args": [
                 "-g",
                 "-O0",
+                "-pthread",
                 "-fsanitize=address",
                 "-D__USE_MINGW_ANSI_STDIO=1",
                 "-std=c11",
@@ -20,7 +21,7 @@
                 "${workspaceFolder}\\src\\systemLibraries\\*.c",
                 "-fshort-enums",
                 "-D__USE_MINGW_ANSI_STDIO=1",
-                "-o", "${workspaceFolder}\\bin\\aurum.exe"
+                "-o", "${workspaceFolder}\\bin\\debugBuild.exe"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
@@ -37,8 +38,9 @@
             "command": "C:/msys64/clang64/bin/clang.exe",
             "args": [
                 "-g",
-                "-O0",
+                "-O3",
                 "-lm",
+                "-pthread",
                 "${workspaceFolder}\\src\\*.c",
                 "${workspaceFolder}\\src\\processing\\*.c",
                 "${workspaceFolder}\\src\\dataStorage\\*.c",

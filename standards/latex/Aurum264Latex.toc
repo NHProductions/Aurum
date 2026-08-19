@@ -1,0 +1,79 @@
+\contentsline {section}{\numberline {1}Introduction}{v}{section.1}%
+\contentsline {section}{\numberline {2}Changed from Last Version}{vi}{section.2}%
+\contentsline {section}{\numberline {3}Getting started}{vii}{section.3}%
+\contentsline {subsubsection}{\numberline {3.0.1}Requirements}{vii}{subsubsection.3.0.1}%
+\contentsline {subsubsection}{\numberline {3.0.2}Installing Aurum (For users)}{vii}{subsubsection.3.0.2}%
+\contentsline {subsubsection}{\numberline {3.0.3}Building Aurum (For development)}{vii}{subsubsection.3.0.3}%
+\contentsline {section}{\numberline {4}Scope}{1}{section.4}%
+\contentsline {section}{\numberline {5}Terms, definitions, and symbols}{1}{section.5}%
+\contentsline {section}{\numberline {6}Aurum Interpreter}{3}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Lexing}{3}{subsection.6.1}%
+\contentsline {subsubsection}{\numberline {6.1.1}Example}{4}{subsubsection.6.1.1}%
+\contentsline {subsection}{\numberline {6.2}Parsing}{6}{subsection.6.2}%
+\contentsline {subsubsection}{\numberline {6.2.1}Example}{7}{subsubsection.6.2.1}%
+\contentsline {subsection}{\numberline {6.3}Bytecoding \& Execution}{8}{subsection.6.3}%
+\contentsline {subsubsection}{\numberline {6.3.1}Stack instructions}{9}{subsubsection.6.3.1}%
+\contentsline {subsubsection}{\numberline {6.3.2}Example}{}{subsubsection.6.3.2}%
+\contentsline {section}{\numberline {7}Language Standard}{12}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Types}{12}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Lexical Elements}{13}{subsection.7.2}%
+\contentsline {subsubsection}{\numberline {7.2.1}Keywords}{13}{subsubsection.7.2.1}%
+\contentsline {subsubsection}{\numberline {7.2.2}Number Literals}{14}{subsubsection.7.2.2}%
+\contentsline {subsubsection}{\numberline {7.2.3}Array Literals}{15}{subsubsection.7.2.3}%
+\contentsline {subsubsection}{\numberline {7.2.4}String \& Character Literals}{16}{subsubsection.7.2.4}%
+\contentsline {subsection}{\numberline {7.3}Comments}{17}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}Operators}{17}{subsection.7.4}%
+\contentsline {subsubsection}{\numberline {7.4.1}Binary Arithmetic Operators}{17}{subsubsection.7.4.1}%
+\contentsline {subsubsection}{\numberline {7.4.2}Bitwise Operators}{18}{subsubsection.7.4.2}%
+\contentsline {subsubsection}{\numberline {7.4.3}Logical Operators}{18}{subsubsection.7.4.3}%
+\contentsline {subsubsection}{\numberline {7.4.4}Other Operators}{19}{subsubsection.7.4.4}%
+\contentsline {subsubsection}{\numberline {7.4.5}Assignment Operators}{19}{subsubsection.7.4.5}%
+\contentsline {subsubsection}{\numberline {7.4.6}Operators during interpretation}{19}{subsubsection.7.4.6}%
+\contentsline {subsection}{\numberline {7.5}Declarations}{20}{subsection.7.5}%
+\contentsline {subsubsection}{\numberline {7.5.1}Variable Declarations \& Assignment}{20}{subsubsection.7.5.1}%
+\contentsline {subsubsection}{\numberline {7.5.2}Function Declarations}{20}{subsubsection.7.5.2}%
+\contentsline {subsubsection}{\numberline {7.5.3}Struct Declarations}{23}{subsubsection.7.5.3}%
+\contentsline {subsubsection}{\numberline {7.5.4}Array Assignment}{27}{subsubsection.7.5.4}%
+\contentsline {subsection}{\numberline {7.6}Statements}{28}{subsection.7.6}%
+\contentsline {subsubsection}{\numberline {7.6.1}Selection Statements}{28}{subsubsection.7.6.1}%
+\contentsline {subsubsection}{\numberline {7.6.2}Iteration Statements}{31}{subsubsection.7.6.2}%
+\contentsline {subsubsection}{\numberline {7.6.3}Other statements}{33}{subsubsection.7.6.3}%
+\contentsline {section}{\numberline {8}Standard Library}{34}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Default Functions}{35}{subsection.8.1}%
+\contentsline {subsubsection}{\numberline {8.1.1}Console Functions}{35}{subsubsection.8.1.1}%
+\contentsline {subsubsection}{\numberline {8.1.2}Type Conversions}{38}{subsubsection.8.1.2}%
+\contentsline {subsubsection}{\numberline {8.1.3}Floats}{40}{subsubsection.8.1.3}%
+\contentsline {subsubsection}{\numberline {8.1.4}Arrays}{41}{subsubsection.8.1.4}%
+\contentsline {subsubsection}{\numberline {8.1.5}Strings}{42}{subsubsection.8.1.5}%
+\contentsline {subsubsection}{\numberline {8.1.6}Error Handling}{44}{subsubsection.8.1.6}%
+\contentsline {subsection}{\numberline {8.2}@math Library}{45}{subsection.8.2}%
+\contentsline {subsubsection}{\numberline {8.2.1}Math Constants}{45}{subsubsection.8.2.1}%
+\contentsline {subsubsection}{\numberline {8.2.2}Base Conversions}{48}{subsubsection.8.2.2}%
+\contentsline {subsubsection}{\numberline {8.2.3}Exponents}{49}{subsubsection.8.2.3}%
+\contentsline {subsubsection}{\numberline {8.2.4}Geometry \& Trigonometry}{50}{subsubsection.8.2.4}%
+\contentsline {subsubsection}{\numberline {8.2.5}Numbers}{52}{subsubsection.8.2.5}%
+\contentsline {subsubsection}{\numberline {8.2.6}Statistics \& Array Operations}{53}{subsubsection.8.2.6}%
+\contentsline {subsection}{\numberline {8.3}@cplx Library}{54}{subsection.8.3}%
+\contentsline {subsubsection}{\numberline {8.3.1}cplxNum Struct}{54}{subsubsection.8.3.1}%
+\contentsline {subsubsection}{\numberline {8.3.2}Complex Exponents}{56}{subsubsection.8.3.2}%
+\contentsline {subsubsection}{\numberline {8.3.3}Complex Trigonometry}{57}{subsubsection.8.3.3}%
+\contentsline {subsection}{\numberline {8.4}@lalg Library}{59}{subsection.8.4}%
+\contentsline {subsubsection}{\numberline {8.4.1}Vectors}{59}{subsubsection.8.4.1}%
+\contentsline {subsubsection}{\numberline {8.4.2}Matrices}{62}{subsubsection.8.4.2}%
+\contentsline {subsection}{\numberline {8.5}@time Library}{63}{subsection.8.5}%
+\contentsline {subsection}{\numberline {8.6}@rand Library}{64}{subsection.8.6}%
+\contentsline {subsubsection}{\numberline {8.6.1}Random Number Generation}{64}{subsubsection.8.6.1}%
+\contentsline {subsubsection}{\numberline {8.6.2}Factorial \& Gamma Functions}{64}{subsubsection.8.6.2}%
+\contentsline {subsubsection}{\numberline {8.6.3}Permutations, Combinations, and Array.Choose()}{65}{subsubsection.8.6.3}%
+\contentsline {subsection}{\numberline {8.7}@io Library}{65}{subsection.8.7}%
+\contentsline {subsubsection}{\numberline {8.7.1}Opening Files}{65}{subsubsection.8.7.1}%
+\contentsline {subsubsection}{\numberline {8.7.2}Reading Files}{66}{subsubsection.8.7.2}%
+\contentsline {subsubsection}{\numberline {8.7.3}Modifying Files}{66}{subsubsection.8.7.3}%
+\contentsline {subsubsection}{\numberline {8.7.4}Directories}{67}{subsubsection.8.7.4}%
+\contentsline {subsection}{\numberline {8.8}@apl Library}{68}{subsection.8.8}%
+\contentsline {subsubsection}{\numberline {8.8.1}Message Handling}{68}{subsubsection.8.8.1}%
+\contentsline {subsubsection}{\numberline {8.8.2}Windows}{68}{subsubsection.8.8.2}%
+\contentsline {section}{\numberline {9}AurX Executable Format}{69}{section.9}%
+\contentsline {subsubsection}{\numberline {9.0.1}AurX Format Usage}{69}{subsubsection.9.0.1}%
+\contentsline {subsubsection}{\numberline {9.0.2}AurX Format Standard}{69}{subsubsection.9.0.2}%
+\contentsline {section}{\numberline {10}Planned additions to the Aurum Standard}{71}{section.10}%

@@ -40,6 +40,8 @@ static const char* systemStructDecl[] = {
     "mtrx",
     "file",
     "directorySearch",
+    "window",
+    "wmsg",
     ""
 };
 

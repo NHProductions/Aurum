@@ -4,6 +4,8 @@
 #include "../dataStorage/array.h"
 #include "../dataStorage/pool.h"
 extern pool* globalPool;
+extern bool isRunning;
+extern int windowsOpen;
 void freeTypedValue(typedValue* tv);
 void freeTVArray(arrayValue av);
 typedef struct {

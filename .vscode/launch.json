@@ -5,7 +5,7 @@
             "name": "Clang: Aurum Debug",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}\\bin\\aurum.exe",
+            "program": "${workspaceFolder}\\bin\\debugBuild.exe",
             "args": [],
             "cwd": "${workspaceFolder}",
             "preLaunchTask": "clang: Compile All C Files (Debugging)",
