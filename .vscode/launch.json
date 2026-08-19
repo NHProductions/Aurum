@@ -1,5 +1,5 @@
 {
-    "version": "0.2.0",
+    "version": "2.0.0",
     "configurations": [
         {
             "name": "Clang: Aurum Debug",
@@ -8,7 +8,7 @@
             "program": "${workspaceFolder}\\bin\\debugBuild.exe",
             "args": [],
             "cwd": "${workspaceFolder}",
-            "preLaunchTask": "clang: Compile All C Files (Debugging)",
+            "preLaunchTask": "compileDebug",
             "env": {
                 "PATH": "C:\\msys64\\clang64\\bin;${env:PATH}" // Change to whereever your msys clang installation is.
             }
@@ -24,6 +24,6 @@
             "env": {
                 "PATH": "C:\\msys64\\clang64\\bin;${env:PATH}" // Change to whereever your msys clang installation is.
             }
-        },
+        }
     ]
 }

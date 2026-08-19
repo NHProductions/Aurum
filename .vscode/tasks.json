@@ -4,7 +4,7 @@
     "tasks": [
         {
             "type": "shell",
-            "label": "clang: Compile All C Files (Debugging)",
+            "label": "compileDebug",
             "command": "C:/msys64/clang64/bin/clang.exe",
             "args": [
                 "-g",
@@ -48,7 +48,7 @@
                 "${workspaceFolder}\\src\\systemLibraries\\*.c",
                 "-fshort-enums",
                 "-D__USE_MINGW_ANSI_STDIO=1",
-                "-o", "${workspaceFolder}\\bin\\aurum.exe",
+                "-o", "${workspaceFolder}\\bin\\aurum.exe"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

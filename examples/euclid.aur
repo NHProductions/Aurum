@@ -1,4 +1,4 @@
-` This is Euclid's algorithm. It finds the greatest common divisor between two numbers.
+` This is Euclid's algorithm. It finds the greatest common divisor of two numbers.
 function euclid(int aa, int bb) -> int {
     long a = aa;
     long b = bb;
