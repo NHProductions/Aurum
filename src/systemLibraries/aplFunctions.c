@@ -3,7 +3,6 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <stdio.h>
-#include <pthread.h>
 #include "../processing/vm.h"
 int getIntArg(typedValue* tv) {
     if (tv->valueType != TYPE_NUM) fatalError(0x30, "", -1);
@@ -138,7 +137,7 @@ int parseMsg(queueMsg qmsg) {
     pushArray(windowVMS->stack, toReturn);
     return 0;
 }
-
+// test
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     if (!isUserMsg) {
         return DefWindowProc(hwnd, uMsg, wParam, lParam);
@@ -645,7 +644,7 @@ void aWindow(auFunc) {
             // wmsg.parse() -> [window, hitarea test code, mouse msg identifier]
             case WM_MOUSEACTIVATE: {
                 typedValue* arr = newTVArray(0, AT_UNKNOWN);
-                appendTypedValue(arr, hwndToVar(m.wParam, vms, currentLocals));
+                appendTypedValue(arr, hwndToVar(m.hwnd, vms, currentLocals));
                 appendTypedValue(arr, numToTV((num){.type = NUM_INT, .value.iVal = LOWORD(m.lParam)}));
                 appendTypedValue(arr, numToTV((num){.type = NUM_INT, .value.iVal = HIWORD(m.lParam)}));
                 pushArray(vms->stack, arr);
